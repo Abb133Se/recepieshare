@@ -1,0 +1,28 @@
+package routes
+
+import (
+	"github.com/Abb133Se/recepieshare/controller"
+	"github.com/Abb133Se/recepieshare/middleware"
+	"github.com/gin-gonic/gin"
+)
+
+func AddRoutes(r *gin.Engine) {
+	r.GET("/recipe/:id", controller.GetRecipeHandler)
+	r.GET("/recipe/list", controller.GetAllRecipesHandler)
+	r.GET("/recipe/:id/ingridients", controller.GetAllRecipeIngridientsHandler)
+	r.GET("/recipe/:id/comments", controller.GetAllRecipeCommentsHandler)
+	r.GET("/ingridient/:id", controller.GetIngrIdientHandler)
+
+	protected := r.Group("/")
+	protected.Use(middleware.AuthenticatJWT())
+	protected.POST("/recipe", controller.PostRecipeHandler)
+	protected.DELETE("/recipe/:id", controller.DeleteRecipeHandler)
+	protected.POST("/comment", controller.PostCommentHandler)
+	protected.DELETE("/comment/:id", controller.DeleteCommentHandler)
+	protected.POST("/ingridient", controller.PostIngridientHandler)
+	protected.DELETE("/ingridient/:id", controller.DeleteIngridientHandler)
+	protected.GET("/user/:id/recipe", controller.GetUserRecipesHandler)
+
+	r.POST("/signup", controller.Signup)
+	r.POST("/login", controller.Login)
+}
