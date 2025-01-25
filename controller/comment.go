@@ -121,9 +121,6 @@ func DeleteCommentHandler(c *gin.Context) {
 }
 
 func PostCommentLikeIncHandler(c *gin.Context) {
-
-	var comment model.Comment
-
 	commentID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -136,19 +133,13 @@ func PostCommentLikeIncHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.First(&comment, commentID).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch comment"})
+	result := db.Exec("update comments set likes = likes + 1 where id = ?", commentID)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to like comment"})
 		return
 	}
-
-	err = db.Exec("update comments set likes = likes + 1 where id = ?", commentID).Error
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to like comment"})
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
 		return
 	}
 
