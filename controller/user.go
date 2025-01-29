@@ -64,7 +64,6 @@ func GetUserRecipesHandler(c *gin.Context) {
 
 func GetUserFavoritesHandler(c *gin.Context) {
 	var favorites []model.Favorite
-	var limit, offset = 1, 0
 
 	validID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
@@ -77,8 +76,6 @@ func GetUserFavoritesHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	limit = validLimit
-	offset = validOffset
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -96,8 +93,8 @@ func GetUserFavoritesHandler(c *gin.Context) {
 	}
 
 	err = db.Where("user_id = ?", validID).
-		Limit(limit).
-		Offset(offset).
+		Limit(validLimit).
+		Offset(validOffset).
 		Find(&favorites).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch favorites"})
