@@ -8,6 +8,7 @@ type Recipe struct {
 	User        User         `gorm:"foreignKey:UserID" json:"-"`
 	Ingridients []Ingridient `gorm:"foreignKey:RecipeID" json:"ingridients"`
 	Comments    []Comment    `gorm:"foreignKey:RecipeID" json:"comments"`
+	Favorited   []Favorite   `gorm:"foreignKey: RecipeID" json:"favorites"`
 }
 
 type Ingridient struct {
@@ -18,14 +19,15 @@ type Ingridient struct {
 }
 
 type User struct {
-	ID       uint      `gorm:"primaryKey"`
-	Name     string    `json:"name"`
-	LastName string    `json:"last_name"`
-	Salt     string    `json:"salt"`
-	Password string    `json:"password"`
-	Email    string    `json:"email"`
-	Comments []Comment `gorm:"foreignKey: UserID" json:"comments"`
-	Recipes  []Recipe  `gorm:"foreignKey: UserID" json:"recipes"`
+	ID        uint       `gorm:"primaryKey"`
+	Name      string     `json:"name"`
+	LastName  string     `json:"last_name"`
+	Salt      string     `json:"salt"`
+	Password  string     `json:"password"`
+	Email     string     `json:"email"`
+	Comments  []Comment  `gorm:"foreignKey: UserID" json:"comments"`
+	Recipes   []Recipe   `gorm:"foreignKey: UserID" json:"recipes"`
+	Favorites []Favorite `gorm:"foreignKey: UserID" json:"favorites"`
 }
 
 type Comment struct {
@@ -35,4 +37,10 @@ type Comment struct {
 	Likes       uint   `gorm:"defualt:0" json:"likes"`
 	UserID      uint   `json:"user_id"`
 	RecipeID    uint   `json:"recipe_id"`
+}
+
+type Favorite struct {
+	ID       uint `gorm:"primaryKey"`
+	UserID   uint `json:"user_id" binding:"required"`
+	RecipeID uint `json:"recipe_id" binding:"required"`
 }
