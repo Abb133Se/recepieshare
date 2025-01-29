@@ -107,3 +107,50 @@ func GetUserFavoritesHandler(c *gin.Context) {
 	})
 
 }
+
+func GetUserRatingsHandler(c *gin.Context) {
+	var ratings []model.Rating
+
+	validID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		return
+	}
+
+	err = db.First(&model.User{}, validID).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"erro": "user not found"})
+
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user data"})
+		return
+	}
+
+	err = db.Where("user_id = ?", validID).
+		Offset(validOffset).
+		Limit(validLimit).
+		Find(&ratings).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch ratings"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "ratings fetched successfully",
+		"data":    ratings,
+	})
+}
