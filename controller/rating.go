@@ -128,3 +128,47 @@ func DeleteRatingHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "rating deleted successfully"})
 }
+
+func GetAverageRatingHandler(c *gin.Context) {
+	var ratings []model.Rating
+
+	validID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		return
+	}
+
+	err = db.Where("recipe_id = ?", validID).Find(&ratings).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch ratings"})
+		return
+	}
+
+	if len(ratings) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":     "no ratings found for the given recipe",
+			"recipe_id": validID,
+		})
+		return
+	}
+
+	var total uint
+	for _, r := range ratings {
+		total += r.Score
+	}
+
+	average := float64(total) / float64(len(ratings))
+
+	c.JSON(http.StatusOK, gin.H{
+		"recipe_id": validID,
+		"average":   average,
+		"count":     len(ratings),
+	})
+
+}

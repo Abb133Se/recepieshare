@@ -12,6 +12,7 @@ func AddRoutes(r *gin.Engine) {
 	r.GET("/recipe/:id/ingridients", controller.GetAllRecipeIngridientsHandler)
 	r.GET("/recipe/:id/comments", controller.GetAllRecipeCommentsHandler)
 	r.GET("/ingridient/:id", controller.GetIngrIdientHandler)
+	r.GET("/recipe/:id/rating", controller.GetAverageRatingHandler)
 
 	protected := r.Group("/")
 	protected.Use(middleware.AuthenticatJWT())
