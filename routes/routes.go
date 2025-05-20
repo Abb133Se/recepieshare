@@ -23,6 +23,7 @@ func AddRoutes(r *gin.Engine) {
 	protected.DELETE("/ingridient/:id", controller.DeleteIngridientHandler)
 	protected.GET("/user/:id/recipe", controller.GetUserRecipesHandler)
 	protected.POST("/comment/:id/like", controller.PostCommentLikeIncHandler)
+	protected.POST("/comment/:id/dislike", controller.PostCommentLikeDecHandler)
 
 	r.POST("/signup", controller.Signup)
 	r.POST("/login", controller.Login)

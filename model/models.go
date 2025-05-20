@@ -36,7 +36,7 @@ type Comment struct {
 	ID          uint   `gorm:"primaryKey"`
 	Title       string `json:"title" binding:"required"`
 	Description string `json:"description" binding:"required"`
-	Likes       uint   `gorm:"defualt:0" json:"likes"`
+	Likes       int    `gorm:"defualt:0" json:"likes"`
 	UserID      uint   `json:"user_id"`
 	RecipeID    uint   `json:"recipe_id"`
 }
