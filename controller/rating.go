@@ -15,6 +15,7 @@ func PostRatingHandler(c *gin.Context) {
 	var rating model.Rating
 	var user model.User
 	var recipe model.Recipe
+	var existingRating model.Rating
 
 	err := c.BindJSON(&rating)
 	if err != nil {
@@ -22,11 +23,6 @@ func PostRatingHandler(c *gin.Context) {
 		return
 	}
 
-	_, err = utils.ValidateEntityID(strconv.Itoa(int(rating.ID)))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
 	_, err = utils.ValidateEntityID(strconv.Itoa(int(rating.RecipeID)))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -68,9 +64,28 @@ func PostRatingHandler(c *gin.Context) {
 		return
 	}
 
+	err = db.Where("user_id = ? AND recipe_id = ?", rating.UserID, rating.RecipeID).First(&existingRating).Error
+
+	if err == nil {
+		existingRating.Score = rating.Score
+		err = db.Save(&existingRating).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update rating"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "rating updated successfully",
+			"id":      existingRating.ID,
+		})
+		return
+	} else if err != gorm.ErrRecordNotFound {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing rating"})
+		return
+	}
+
 	err = db.Create(&rating).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add reting"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add rating"})
 		return
 	}
 

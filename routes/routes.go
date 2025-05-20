@@ -25,7 +25,7 @@ func AddRoutes(r *gin.Engine) {
 	protected.GET("/user/:id/favorites", controller.GetUserFavoritesHandler)
 	protected.POST("/comment/:id/like", controller.PostCommentLikeIncHandler)
 	protected.POST("/favorite", controller.PostFavoriteHandler)
-	protected.DELETE("/favorite/:id", controller.DeleteFavorite)
+	protected.DELETE("/favorite/:id", controller.DeleteFavoriteHandler)
 	protected.POST("/rating", controller.PostRatingHandler)
 	protected.DELETE("/rating/:id", controller.DeleteRatingHandler)
 	protected.GET("/user/:id/ratings", controller.GetUserRatingsHandler)
