@@ -73,7 +73,7 @@ func PostFavoriteHandler(c *gin.Context) {
 	})
 }
 
-func DeleteFavorite(c *gin.Context) {
+func DeleteFavoriteHandler(c *gin.Context) {
 	var favorite model.Favorite
 
 	validID, err := utils.ValidateEntityID(c.Param("id"))
