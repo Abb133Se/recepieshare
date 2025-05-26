@@ -19,6 +19,12 @@ type TopRatedRecipe struct {
 	TotalVotes int64   `json:"total_votes"`
 }
 
+type MostPopularRecipe struct {
+	RecipeID      uint   `json:"recipe_id"`
+	Title         string `json:"title"`
+	FavoriteCount int64  `json:"favorite_count"`
+}
+
 func GetRecipeHandler(c *gin.Context) {
 
 	var recipe model.Recipe
@@ -380,4 +386,38 @@ func GetTopRatedRecipesHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, results)
 
+}
+
+func GetMostPopularRecipesHandler(c *gin.Context) {
+	var results []MostPopularRecipe
+	var limit, offset = 1, 0
+
+	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	limit = validLimit
+	offset = validOffset
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		return
+	}
+
+	err = db.Table("recipes").
+		Select("recipes.id as recipe_id, recipes.title, COUNT(favorites.id) as favorite_count").
+		Joins("LEFT JOIN favorites ON recipes.id = favorites.recipe_id").
+		Group("recipes.id").
+		Order("favorite_count DESC").
+		Limit(limit).
+		Offset(offset).
+		Scan(&results).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "faild to fetch popular recipes"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"recipes": results})
 }
