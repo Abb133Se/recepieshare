@@ -273,3 +273,69 @@ func GetAllRecipesHandler(c *gin.Context) {
 	})
 
 }
+
+func PutRecipeUpdateHandler(c *gin.Context) {
+	var input struct {
+		Title       string             `json:"title"`
+		Text        string             `json:"text"`
+		Ingridients []model.Ingridient `json:"ingridient"`
+	}
+
+	var recipe model.Recipe
+
+	validID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err = c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input", "details": err.Error()})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "faild to connect to db"})
+		return
+	}
+
+	if err = db.First(&recipe, validID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipe"})
+		return
+	}
+
+	recipe.Title = input.Title
+	recipe.Text = input.Text
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&recipe).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&model.Ingridient{}).Error; err != nil {
+			return err
+		}
+
+		for _, ing := range input.Ingridients {
+			ing.RecipeID = recipe.ID
+			if err := tx.Create(&ing).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "couldn't update recipe", "detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "recipe updated successfully"})
+
+}
