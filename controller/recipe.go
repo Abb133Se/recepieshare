@@ -12,6 +12,13 @@ import (
 	"gorm.io/gorm"
 )
 
+type TopRatedRecipe struct {
+	RecipeID   uint    `json:"recipe_id"`
+	Title      string  `json:"title"`
+	Average    float64 `joson:"average"`
+	TotalVotes int64   `json:"total_votes"`
+}
+
 func GetRecipeHandler(c *gin.Context) {
 
 	var recipe model.Recipe
@@ -337,5 +344,40 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "recipe updated successfully"})
+
+}
+
+func GetTopRatedRecipesHandler(c *gin.Context) {
+	var results []TopRatedRecipe
+	var limit, offset = 1, 0
+
+	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	limit = validLimit
+	offset = validOffset
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		return
+	}
+
+	err = db.Table("ratings").
+		Select("recipes.id AS recipe_id, recipes.title, AVG(ratings.score) AS average, COUNT(ratings.id) AS total_votes").
+		Joins("JOIN recipes ON recipes.id = ratings.recipe_id").
+		Group("ratings.recipe_id").
+		Order("average DESC").
+		Limit(limit).
+		Offset(offset).
+		Scan(&results).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch top rated recipes"})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
 
 }
