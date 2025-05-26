@@ -120,7 +120,7 @@ func DeleteRatingHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Delete(&model.Favorite{}, validID).Error
+	err = db.Delete(&model.Rating{}, validID).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete favorite"})
 		return
@@ -170,5 +170,52 @@ func GetAverageRatingHandler(c *gin.Context) {
 		"average":   average,
 		"count":     len(ratings),
 	})
+
+}
+
+func PutUpdateRatingHandler(c *gin.Context) {
+	var rating model.Rating
+	var existingRating model.Rating
+
+	validId, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err = c.BindJSON(&rating); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		return
+	}
+
+	if rating.Score < 1 || rating.Score > 5 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "rating score must be between 1 and 5"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		return
+	}
+
+	err = db.First(&existingRating, validId).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "rating no found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch rating"})
+		return
+	}
+
+	existingRating.Score = rating.Score
+	err = db.Save(&existingRating).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update rating"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "rating updated successfully", "id": existingRating.ID})
 
 }
