@@ -218,6 +218,17 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 	limit = validLimit
 	offset = validOffset
 
+	sort := c.DefaultQuery("sort", "")
+	var order string
+	switch sort {
+	case "likes_desc":
+		order = "likes DESC"
+	case "likes_asc":
+		order = "likes ASC"
+	default:
+		order = ""
+	}
+
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
@@ -234,7 +245,11 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Model(&model.Comment{}).Where("recipe_id = ?", validID).Limit(limit).Offset(offset).Find(&comments).Error
+	query := db.Model(&model.Comment{}).Where("recipe_id = ?", validID).Limit(limit).Offset(offset)
+	if order != "" {
+		query = query.Order(order)
+	}
+	err = query.Find(&comments).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve comments"})
 		return

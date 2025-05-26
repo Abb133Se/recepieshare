@@ -5,6 +5,12 @@ import (
 	"strconv"
 )
 
+var validSortOptions = map[string]bool{
+	"like_desc": true,
+	"like_asc":  true,
+	"":          true,
+}
+
 func ValidateEntityID(id string) (uint, error) {
 	parsedID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
@@ -41,4 +47,11 @@ func ValidateOffLimit(limit, offset string) (int, int, error) {
 		}
 	}
 	return resultedLimit, resultedOffset, nil
+}
+
+func ValidateSortOption(sort string) (string, error) {
+	if _, ok := validSortOptions[sort]; !ok {
+		return "", errors.New("invalid sort option, allowed values are: like_desc, like_asc")
+	}
+	return sort, nil
 }
