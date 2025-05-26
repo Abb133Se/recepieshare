@@ -50,7 +50,7 @@ func GetRecipeHandler(c *gin.Context) {
 		"message": "successful",
 		"data":    recipe,
 	})
-} //modified
+}
 
 func PostRecipeHandler(c *gin.Context) {
 
@@ -104,7 +104,7 @@ func PostRecipeHandler(c *gin.Context) {
 		"id":      recipe.ID,
 	})
 
-} //modified
+}
 
 func DeleteRecipeHandler(c *gin.Context) {
 	var recepie model.Recipe
