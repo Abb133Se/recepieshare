@@ -31,6 +31,7 @@ func AddRoutes(r *gin.Engine) {
 	protected.POST("/rating", controller.PostRatingHandler)
 	protected.DELETE("/rating/:id", controller.DeleteRatingHandler)
 	protected.GET("/user/:id/ratings", controller.GetUserRatingsHandler)
+	protected.PUT("/recipe/:id", controller.PutRecipeUpdateHandler)
 
 	r.POST("/signup", controller.Signup)
 	r.POST("/login", controller.Login)
