@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type Recipe struct {
 	ID          uint         `gorm:"primaryKey"`
 	Title       string       `json:"title" binding:"required"`
@@ -20,16 +22,18 @@ type Ingridient struct {
 }
 
 type User struct {
-	ID        uint       `gorm:"primaryKey"`
-	Name      string     `json:"name"`
-	LastName  string     `json:"last_name"`
-	Salt      string     `json:"salt"`
-	Password  string     `json:"password"`
-	Email     string     `json:"email"`
-	Comments  []Comment  `gorm:"foreignKey: UserID" json:"comments"`
-	Recipes   []Recipe   `gorm:"foreignKey: UserID" json:"recipes"`
-	Favorites []Favorite `gorm:"foreignKey: UserID" json:"favorites"`
-	Ratings   []Rating   `gorm:"foreignKey:UserID" json:"ratings"`
+	ID                     uint       `gorm:"primaryKey"`
+	Name                   string     `json:"name"`
+	LastName               string     `json:"last_name"`
+	Salt                   string     `json:"salt"`
+	Password               string     `json:"password"`
+	Email                  string     `json:"email"`
+	PasswordResetToken     string     `json:"-" gorm:"size:255"`
+	PasswordResetExpiresAt *time.Time `json:"-"`
+	Comments               []Comment  `gorm:"foreignKey: UserID" json:"comments"`
+	Recipes                []Recipe   `gorm:"foreignKey: UserID" json:"recipes"`
+	Favorites              []Favorite `gorm:"foreignKey: UserID" json:"favorites"`
+	Ratings                []Rating   `gorm:"foreignKey:UserID" json:"ratings"`
 }
 
 type Comment struct {
