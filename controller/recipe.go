@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -24,6 +25,8 @@ type MostPopularRecipe struct {
 	Title         string `json:"title"`
 	FavoriteCount int64  `json:"favorite_count"`
 }
+
+var API_KEY = "YTAMecQ6C06ClaR/HmS26g==OUlc0LkiJgLyFjhv"
 
 func GetRecipeHandler(c *gin.Context) {
 
@@ -435,4 +438,39 @@ func GetMostPopularRecipesHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"recipes": results})
+}
+
+func GetRecipeCaloriesHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	recipeID, err := utils.ValidateEntityID(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid recipe ID"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	var ingredients []model.Ingridient
+	if err := db.Where("recipe_id = ?", recipeID).Find(&ingredients).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch ingredients"})
+		return
+	}
+
+	var ingredientStrings []string
+	for _, ing := range ingredients {
+		ingredientStrings = append(ingredientStrings, fmt.Sprintf("%s of %s", ing.Amount, ing.Name))
+	}
+
+	estimate, err := utils.EstimateCalories(API_KEY, ingredientStrings)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI model inference failed", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ai_estimate": estimate})
 }
