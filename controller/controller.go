@@ -124,7 +124,7 @@ func ForgotPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	resetToken, err := utils.GenerateResetToken()
+	resetToken, err := token.GenerateResetToken()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate reset token"})
 		return
