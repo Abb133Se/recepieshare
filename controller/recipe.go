@@ -440,7 +440,7 @@ func GetMostPopularRecipesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"recipes": results})
 }
 
-func GetRecipeCaloriesHandler(c *gin.Context) {
+func GetRecipeNutritionHandler(c *gin.Context) {
 	id := c.Param("id")
 
 	recipeID, err := utils.ValidateEntityID(id)
@@ -466,11 +466,11 @@ func GetRecipeCaloriesHandler(c *gin.Context) {
 		ingredientStrings = append(ingredientStrings, fmt.Sprintf("%s of %s", ing.Amount, ing.Name))
 	}
 
-	estimate, err := utils.EstimateCalories(API_KEY, ingredientStrings)
+	nutritionData, err := utils.EstimateNutrition(API_KEY, ingredientStrings)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI model inference failed", "details": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"ai_estimate": estimate})
+	c.JSON(http.StatusOK, gin.H{"nutritional values": nutritionData})
 }

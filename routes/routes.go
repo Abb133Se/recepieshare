@@ -17,7 +17,7 @@ func AddRoutes(r *gin.Engine) {
 	r.GET("/recipes/most-popular", controller.GetMostPopularRecipesHandler)
 	r.POST("/forgot-password", controller.ForgotPasswordHandler)
 	r.POST("/reset-password", controller.ResetPasswordHandler)
-	r.GET("/recipe/:id/calories", controller.GetRecipeCaloriesHandler)
+	r.GET("/recipe/:id/calories", controller.GetRecipeNutritionHandler)
 
 	protected := r.Group("/")
 	protected.Use(middleware.AuthenticatJWT())
