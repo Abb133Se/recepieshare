@@ -9,25 +9,28 @@ import (
 	"strings"
 )
 
-// CalorieNinjasResponse matches the API response structure
-type CalorieNinjasResponse struct {
-	Items []struct {
-		Name        string  `json:"name"`
-		Calories    float64 `json:"calories"`
-		ServingSize float64 `json:"serving_size_g"`
-	} `json:"items"`
+type NutritionItem struct {
+	Name                string  `json:"name"`
+	Calories            float64 `json:"calories"`
+	ServingSizeG        float64 `json:"serving_size_g"`
+	FatTotalG           float64 `json:"fat_total_g"`
+	FatSaturatedG       float64 `json:"fat_saturated_g"`
+	ProteinG            float64 `json:"protein_g"`
+	SodiumMg            float64 `json:"sodium_mg"`
+	PotassiumMg         float64 `json:"potassium_mg"`
+	CholesterolMg       float64 `json:"cholesterol_mg"`
+	CarbohydratesTotalG float64 `json:"carbohydrates_total_g"`
+	FiberG              float64 `json:"fiber_g"`
+	SugarG              float64 `json:"sugar_g"`
 }
 
-func EstimateCalories(apiKey string, ingredients []string) (float64, error) {
-	// Join ingredients with comma separator for the query param
+func EstimateNutrition(apiKey string, ingredients []string) ([]NutritionItem, error) {
 	query := strings.Join(ingredients, ", ")
-	encodedQuery := url.QueryEscape(query)
-
-	url := "https://api.calorieninjas.com/v1/nutrition?query=" + encodedQuery
+	url := "https://api.calorieninjas.com/v1/nutrition?query=" + url.QueryEscape(query)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("X-Api-Key", apiKey)
@@ -35,30 +38,28 @@ func EstimateCalories(apiKey string, ingredients []string) (float64, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("failed to call API: %w", err)
+		return nil, fmt.Errorf("failed to call API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return 0, fmt.Errorf("API error: %s", string(bodyBytes))
+		return nil, fmt.Errorf("API error: %s", string(bodyBytes))
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var cnResp CalorieNinjasResponse
-	err = json.Unmarshal(bodyBytes, &cnResp)
+	var result struct {
+		Items []NutritionItem `json:"items"`
+	}
+
+	err = json.Unmarshal(bodyBytes, &result)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse API response: %w", err)
+		return nil, fmt.Errorf("failed to parse API response: %w", err)
 	}
 
-	var totalCalories float64
-	for _, item := range cnResp.Items {
-		totalCalories += item.Calories
-	}
-
-	return totalCalories, nil
+	return result.Items, nil
 }
