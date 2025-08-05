@@ -46,7 +46,7 @@ func GetRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Preload("Ingridients").
+	err = db.Preload("Ingredients").
 		Preload("Comments").
 		Preload("User").First(&recipe, validID).Error
 	if err != nil {
@@ -115,6 +115,15 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
+	for i := range recipe.Ingredients {
+		recipe.Ingredients[i].ID = 0
+		recipe.Ingredients[i].RecipeID = recipe.ID
+		if err := db.Create(&recipe.Ingredients[i]).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to save ingredient"})
+			return
+		}
+	}
+
 	c.JSON(200, gin.H{
 		"message": "recipe created succussfully",
 		"id":      recipe.ID,
@@ -160,9 +169,9 @@ func DeleteRecipeHandler(c *gin.Context) {
 	})
 }
 
-func GetAllRecipeIngridientsHandler(c *gin.Context) {
+func GetAllRecipeIngredientHandler(c *gin.Context) {
 
-	var ingridients []model.Ingridient
+	var Ingredient []model.Ingredient
 
 	validID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
@@ -182,20 +191,20 @@ func GetAllRecipeIngridientsHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Model(&model.Ingridient{}).Where("recipe_id = ?", c.Param("id")).Find(&ingridients).Error
+	err = db.Model(&model.Ingredient{}).Where("recipe_id = ?", c.Param("id")).Find(&Ingredient).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve ingridients from server"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve Ingredient from server"})
 		return
 	}
 
-	if len(ingridients) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "recipe does not have ingridients"})
+	if len(Ingredient) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "recipe does not have Ingredient"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "ingridients successfully retrieved",
-		"data":    ingridients,
+		"message": "Ingredient successfully retrieved",
+		"data":    Ingredient,
 	})
 
 }
@@ -293,7 +302,7 @@ func GetAllRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	if err = db.Preload("Comments").Preload("Ingridients").Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
+	if err = db.Preload("Comments").Preload("Ingredients").Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipes"})
 		return
 	}
@@ -307,9 +316,9 @@ func GetAllRecipesHandler(c *gin.Context) {
 
 func PutRecipeUpdateHandler(c *gin.Context) {
 	var input struct {
-		Title       string             `json:"title"`
-		Text        string             `json:"text"`
-		Ingridients []model.Ingridient `json:"ingridient"`
+		Title      string             `json:"title"`
+		Text       string             `json:"text"`
+		Ingredient []model.Ingredient `json:"ingridient"`
 	}
 
 	var recipe model.Recipe
@@ -348,11 +357,11 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			return err
 		}
 
-		if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&model.Ingridient{}).Error; err != nil {
+		if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&model.Ingredient{}).Error; err != nil {
 			return err
 		}
 
-		for _, ing := range input.Ingridients {
+		for _, ing := range input.Ingredient {
 			ing.RecipeID = recipe.ID
 			if err := tx.Create(&ing).Error; err != nil {
 				return err
@@ -455,7 +464,7 @@ func GetRecipeNutritionHandler(c *gin.Context) {
 		return
 	}
 
-	var ingredients []model.Ingridient
+	var ingredients []model.Ingredient
 	if err := db.Where("recipe_id = ?", recipeID).Find(&ingredients).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch ingredients"})
 		return

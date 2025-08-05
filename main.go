@@ -22,7 +22,6 @@ func main() {
 	if err := migrate.AutoMigration(db); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
-	fmt.Println("Database migrated successfully.")
 
 	err := r.Run(":3000")
 	if err != nil {

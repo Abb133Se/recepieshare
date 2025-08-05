@@ -12,9 +12,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetIngrIdientHandler(c *gin.Context) {
+func GetIngredientHandler(c *gin.Context) {
 
-	var ingridient model.Ingridient
+	var Ingredient model.Ingredient
 
 	id := c.Param("id")
 
@@ -32,7 +32,7 @@ func GetIngrIdientHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.First(&ingridient, validID).Error
+	err = db.First(&Ingredient, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -47,16 +47,16 @@ func GetIngrIdientHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"message": "successful",
-		"data":    ingridient,
+		"data":    Ingredient,
 	})
 }
 
-func PostIngridientHandler(c *gin.Context) {
+func PostIngredientHandler(c *gin.Context) {
 
-	var ingridient model.Ingridient
+	var Ingredient model.Ingredient
 	var recipe model.Recipe
 
-	err := c.BindJSON(&ingridient)
+	err := c.BindJSON(&Ingredient)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "bad request",
@@ -64,15 +64,15 @@ func PostIngridientHandler(c *gin.Context) {
 		return
 	}
 
-	if ingridient.ID != 0 {
-		if _, err := utils.ValidateEntityID(strconv.Itoa(int(ingridient.ID))); err != nil {
+	if Ingredient.ID != 0 {
+		if _, err := utils.ValidateEntityID(strconv.Itoa(int(Ingredient.ID))); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
-	if ingridient.RecipeID != 0 {
-		if _, err := utils.ValidateEntityID(strconv.Itoa(int(ingridient.RecipeID))); err != nil {
+	if Ingredient.RecipeID != 0 {
+		if _, err := utils.ValidateEntityID(strconv.Itoa(int(Ingredient.RecipeID))); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -86,7 +86,7 @@ func PostIngridientHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.First(&recipe, ingridient.RecipeID).Error
+	err = db.First(&recipe, Ingredient.RecipeID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
@@ -96,22 +96,22 @@ func PostIngridientHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Create(&ingridient).Error
+	err = db.Create(&Ingredient).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to creat ingridient"})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to creat Ingredient"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "recorde successfully inserted",
-		"id":      ingridient.ID,
+		"id":      Ingredient.ID,
 	})
 
 }
 
-func DeleteIngridientHandler(c *gin.Context) {
+func DeleteIngredientHandler(c *gin.Context) {
 
-	var ingridient model.Ingridient
+	var Ingredient model.Ingredient
 
 	id := c.Param("id")
 
@@ -127,13 +127,13 @@ func DeleteIngridientHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.First(&ingridient, validID).Error
+	err = db.First(&Ingredient, validID).Error
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
 
-	err = db.Delete(&model.Ingridient{}, validID).Error
+	err = db.Delete(&model.Ingredient{}, validID).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete record"})
 		return

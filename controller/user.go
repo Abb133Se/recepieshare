@@ -45,7 +45,7 @@ func GetUserRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Preload("Ingridients").Preload("Comments").
+	err = db.Preload("Ingredients").Preload("Comments").
 		Where("user_id = ?", validID).
 		Limit(limit).
 		Offset(offset).
