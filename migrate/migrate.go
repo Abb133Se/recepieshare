@@ -13,9 +13,11 @@ func AutoMigration(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&model.User{},
 		&model.Recipe{},
-		&model.Ingridient{},
+		&model.Ingredient{},
 		&model.Comment{},
 		&model.Favorite{},
 		&model.Rating{},
+		&model.Tag{},
+		&model.Category{},
 	)
 }
