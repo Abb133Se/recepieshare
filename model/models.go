@@ -14,13 +14,17 @@ type Recipe struct {
 	Ratings     []Rating     `gorm:"foreignKey:RecipeID" json:"ratings"`
 	Tags        []Tag        `gorm:"many2many:recipe_tags;foreignKey:ID;joinForeignKey:RecipeID;References:ID;joinReferences:TagID" json:"tags"`
 	Categories  []Category   `gorm:"many2many:recipe_categories;foreignKey:ID;joinForeignKey:RecipeID;References:ID;joinReferences:CategoryID" json:"categories"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Ingredient struct {
-	ID       uint   `gorm:"primaryKey"`
-	Name     string `json:"name" binding:"required"`
-	Amount   string `json:"amount" binding:"required"`
-	RecipeID uint   `json:"recipe_id"`
+	ID        uint   `gorm:"primaryKey"`
+	Name      string `json:"name" binding:"required"`
+	Amount    string `json:"amount" binding:"required"`
+	RecipeID  uint   `json:"recipe_id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type User struct {
@@ -36,6 +40,8 @@ type User struct {
 	Recipes                []Recipe   `gorm:"foreignKey: UserID" json:"recipes"`
 	Favorites              []Favorite `gorm:"foreignKey: UserID" json:"favorites"`
 	Ratings                []Rating   `gorm:"foreignKey:UserID" json:"ratings"`
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 type Comment struct {
@@ -45,29 +51,39 @@ type Comment struct {
 	Likes       int    `gorm:"default:0" json:"likes"`
 	UserID      uint   `json:"user_id"`
 	RecipeID    uint   `json:"recipe_id"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Favorite struct {
-	ID       uint `gorm:"primaryKey"`
-	UserID   uint `json:"user_id" binding:"required"`
-	RecipeID uint `json:"recipe_id" binding:"required"`
+	ID        uint `gorm:"primaryKey"`
+	UserID    uint `json:"user_id" binding:"required"`
+	RecipeID  uint `json:"recipe_id" binding:"required"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Rating struct {
-	ID       uint `gorm:"primaryKey"`
-	RecipeID uint `json:"recipe_id"`
-	UserID   uint `json:"user_id"`
-	Score    uint `gorm:"check:score >= 1 AND score <= 5" json:"score" binding:"required"`
+	ID        uint `gorm:"primaryKey"`
+	RecipeID  uint `json:"recipe_id"`
+	UserID    uint `json:"user_id"`
+	Score     uint `gorm:"check:score >= 1 AND score <= 5" json:"score" binding:"required"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Tag struct {
-	ID      uint     `gorm:"primaryKey"`
-	Name    string   `json:"name" binding:"required" gorm:"unique;not null"`
-	Recipes []Recipe `gorm:"many2many:recipe_tags;foreignKey:ID;joinForeignKey:TagID;References:ID;joinReferences:RecipeID" json:"-"`
+	ID        uint     `gorm:"primaryKey"`
+	Name      string   `json:"name" binding:"required" gorm:"unique;not null"`
+	Recipes   []Recipe `gorm:"many2many:recipe_tags;foreignKey:ID;joinForeignKey:TagID;References:ID;joinReferences:RecipeID" json:"-"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Category struct {
-	ID      uint     `gorm:"primaryKey"`
-	Name    string   `json:"name" binding:"required" gorm:"unique;not null"`
-	Recipes []Recipe `gorm:"many2many:recipe_categories;foreignKey:ID;joinForeignKey:CategoryID;References:ID;joinReferences:RecipeID" json:"-"`
+	ID        uint     `gorm:"primaryKey"`
+	Name      string   `json:"name" binding:"required" gorm:"unique;not null"`
+	Recipes   []Recipe `gorm:"many2many:recipe_categories;foreignKey:ID;joinForeignKey:CategoryID;References:ID;joinReferences:RecipeID" json:"-"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
