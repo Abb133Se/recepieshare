@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
@@ -684,14 +683,13 @@ func SearchRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	title := c.Query("title")
-	ingredient := c.Query("ingredient")
-	tagIDsStr := c.Query("tag_ids")
-	categoryIDsStr := c.Query("category_ids")
-	userIDStr := c.Query("user_id")
-
-	tagIDs := utils.ParseUintSlice(tagIDsStr)
-	categoryIDs := utils.ParseUintSlice(categoryIDsStr)
+	params := map[string]string{
+		"title":        c.Query("title"),
+		"ingredient":   c.Query("ingredient"),
+		"tag_ids":      c.Query("tag_ids"),
+		"category_ids": c.Query("category_ids"),
+		"user_id":      c.Query("user_id"),
+	}
 
 	query := db.Model(&model.Recipe{}).
 		Preload("Ingredients").
@@ -700,31 +698,7 @@ func SearchRecipesHandler(c *gin.Context) {
 		Preload("User").
 		Preload("Steps")
 
-	if title != "" {
-		query = query.Where("title LIKE ?", "%"+title+"%")
-	}
-
-	if ingredient != "" {
-		query = query.Joins("JOIN ingredients ON ingredients.recipe_id = recipes.id").
-			Where("ingredients.name LIKE ?", "%"+ingredient+"%")
-	}
-
-	if len(tagIDs) > 0 {
-		query = query.Joins("JOIN recipe_tags ON recipe_tags.recipe_id = recipes.id").
-			Where("recipe_tags.tag_id IN ?", tagIDs)
-	}
-
-	if len(categoryIDs) > 0 {
-		query = query.Joins("JOIN recipe_categories ON recipe_categories.recipe_id = recipes.id").
-			Where("recipe_categories.category_id IN ?", categoryIDs)
-	}
-
-	if userIDStr != "" {
-		userID, err := strconv.ParseUint(userIDStr, 10, 64)
-		if err == nil {
-			query = query.Where("user_id = ?", userID)
-		}
-	}
+	query = utils.ApplyRecipeFilters(query, params)
 
 	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
 	if err != nil {
