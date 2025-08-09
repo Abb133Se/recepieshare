@@ -56,6 +56,20 @@ definitions:
       message:
         type: string
     type: object
+  controller.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  controller.ForgotPasswordResponse:
+    properties:
+      message:
+        type: string
+      reset_token:
+        type: string
+    type: object
   controller.IngredientCreateResponse:
     properties:
       id:
@@ -122,6 +136,21 @@ definitions:
       message:
         type: string
     type: object
+  controller.ResetPasswordRequest:
+    properties:
+      new_password:
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
+    type: object
+  controller.ResetPasswordResponse:
+    properties:
+      message:
+        type: string
+    type: object
   controller.SimpleMessageResponse:
     properties:
       message:
@@ -175,6 +204,21 @@ definitions:
       message:
         type: string
     type: object
+  controller.UserLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  controller.UserLoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
   controller.UserRatingsResponse:
     properties:
       data:
@@ -192,6 +236,22 @@ definitions:
         type: array
       message:
         type: string
+    type: object
+  controller.UserSignupRequest:
+    properties:
+      email:
+        type: string
+      last_name:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - last_name
+    - name
+    - password
     type: object
   model.Category:
     properties:
@@ -708,6 +768,36 @@ paths:
       summary: Delete a favorite by ID
       tags:
       - favorites
+  /forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends password reset instructions if email exists
+      parameters:
+      - description: User email
+        in: body
+        name: email
+        required: true
+        schema:
+          $ref: '#/definitions/controller.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.ForgotPasswordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Initiate password reset
+      tags:
+      - auth
   /ingredient:
     post:
       consumes:
@@ -799,6 +889,40 @@ paths:
       summary: Get an ingredient by ID
       tags:
       - ingredients
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/controller.UserLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.UserLoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
   /rating:
     post:
       consumes:
@@ -1452,6 +1576,70 @@ paths:
       summary: Get top rated recipes
       tags:
       - recipes
+  /reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets password using reset token
+      parameters:
+      - description: Reset password data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controller.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.ResetPasswordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Reset user password
+      tags:
+      - auth
+  /signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account
+      parameters:
+      - description: User signup info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/controller.UserSignupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.SimpleMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
   /tag:
     post:
       consumes:
