@@ -12,8 +12,8 @@ type Recipe struct {
 	Comments    []Comment    `gorm:"foreignKey:RecipeID" json:"comments"`
 	Favorited   []Favorite   `gorm:"foreignKey: RecipeID" json:"favorites"`
 	Ratings     []Rating     `gorm:"foreignKey:RecipeID" json:"ratings"`
-	Tags        []Tag        `gorm:"many2many:recipe_tags;foreignKey:ID;joinForeignKey:RecipeID;References:ID;joinReferences:TagID" json:"tags"`
-	Categories  []Category   `gorm:"many2many:recipe_categories;foreignKey:ID;joinForeignKey:RecipeID;References:ID;joinReferences:CategoryID" json:"categories"`
+	Tags        []Tag        `gorm:"many2many:recipe_tags" json:"tags"`
+	Categories  []Category   `gorm:"many2many:recipe_categories" json:"categories"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -75,7 +75,7 @@ type Rating struct {
 type Tag struct {
 	ID        uint     `gorm:"primaryKey"`
 	Name      string   `json:"name" binding:"required" gorm:"unique;not null"`
-	Recipes   []Recipe `gorm:"many2many:recipe_tags;foreignKey:ID;joinForeignKey:TagID;References:ID;joinReferences:RecipeID" json:"-"`
+	Recipes   []Recipe `gorm:"many2many:recipe_tags" json:"-"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -83,7 +83,7 @@ type Tag struct {
 type Category struct {
 	ID        uint     `gorm:"primaryKey"`
 	Name      string   `json:"name" binding:"required" gorm:"unique;not null"`
-	Recipes   []Recipe `gorm:"many2many:recipe_categories;foreignKey:ID;joinForeignKey:CategoryID;References:ID;joinReferences:RecipeID" json:"-"`
+	Recipes   []Recipe `gorm:"many2many:recipe_categories" json:"-"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
