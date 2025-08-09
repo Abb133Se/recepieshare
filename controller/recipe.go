@@ -700,6 +700,9 @@ func SearchRecipesHandler(c *gin.Context) {
 
 	query = utils.ApplyRecipeFilters(query, params)
 
+	sortParam := c.Query("sort")
+	query = utils.ApplySorting(query, sortParam)
+
 	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -707,8 +710,6 @@ func SearchRecipesHandler(c *gin.Context) {
 	}
 
 	query = query.Limit(limit).Offset(offset)
-
-	// TODO: Add sorting logic if needed, e.g. by rating or date
 
 	var recipes []model.Recipe
 	if err := query.Find(&recipes).Error; err != nil {
