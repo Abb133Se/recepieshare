@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
@@ -674,4 +675,77 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "categories removed from recipe"})
+}
+
+func SearchRecipesHandler(c *gin.Context) {
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		return
+	}
+
+	title := c.Query("title")
+	ingredient := c.Query("ingredient")
+	tagIDsStr := c.Query("tag_ids")
+	categoryIDsStr := c.Query("category_ids")
+	userIDStr := c.Query("user_id")
+
+	tagIDs := utils.ParseUintSlice(tagIDsStr)
+	categoryIDs := utils.ParseUintSlice(categoryIDsStr)
+
+	query := db.Model(&model.Recipe{}).
+		Preload("Ingredients").
+		Preload("Tags").
+		Preload("Categories").
+		Preload("User").
+		Preload("Steps")
+
+	if title != "" {
+		query = query.Where("title LIKE ?", "%"+title+"%")
+	}
+
+	if ingredient != "" {
+		query = query.Joins("JOIN ingredients ON ingredients.recipe_id = recipes.id").
+			Where("ingredients.name LIKE ?", "%"+ingredient+"%")
+	}
+
+	if len(tagIDs) > 0 {
+		query = query.Joins("JOIN recipe_tags ON recipe_tags.recipe_id = recipes.id").
+			Where("recipe_tags.tag_id IN ?", tagIDs)
+	}
+
+	if len(categoryIDs) > 0 {
+		query = query.Joins("JOIN recipe_categories ON recipe_categories.recipe_id = recipes.id").
+			Where("recipe_categories.category_id IN ?", categoryIDs)
+	}
+
+	if userIDStr != "" {
+		userID, err := strconv.ParseUint(userIDStr, 10, 64)
+		if err == nil {
+			query = query.Where("user_id = ?", userID)
+		}
+	}
+
+	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	query = query.Limit(limit).Offset(offset)
+
+	// TODO: Add sorting logic if needed, e.g. by rating or date
+
+	var recipes []model.Recipe
+	if err := query.Find(&recipes).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusOK, gin.H{"data": []model.Recipe{}})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": recipes})
+
 }

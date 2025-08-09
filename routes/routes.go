@@ -18,6 +18,7 @@ func AddRoutes(r *gin.Engine) {
 		public.GET("/recipe/:id/calories", controller.GetRecipeNutritionHandler)
 		public.GET("/recipes/top-rated", controller.GetTopRatedRecipesHandler)
 		public.GET("/recipes/most-popular", controller.GetMostPopularRecipesHandler)
+		public.GET("/recipes/search", controller.SearchRecipesHandler)
 
 		// Ingredient read endpoint
 		public.GET("/ingredient/:id", controller.GetIngredientHandler)
