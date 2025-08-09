@@ -36,6 +36,7 @@ type PostRecipeRequest struct {
 	Ingredients []model.Ingredient `json:"ingredients" binding:"required"`
 	TagIDs      []uint             `json:"tag_ids"`
 	CategoryIDs []uint             `json:"category_ids"`
+	Steps       []model.Step       `json:"steps"`
 }
 
 var API_KEY = "YTAMecQ6C06ClaR/HmS26g==OUlc0LkiJgLyFjhv"
@@ -62,7 +63,9 @@ func GetRecipeHandler(c *gin.Context) {
 		Preload("Comments").
 		Preload("User").
 		Preload("Tags").
-		Preload("Categories").First(&recipe, validID).Error
+		Preload("Categories").
+		Preload("Steps").
+		First(&recipe, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -89,7 +92,6 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	// Validate UserID
 	if req.UserID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
 		return
@@ -101,7 +103,6 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	// Ensure user exists
 	var user model.User
 	if err := db.First(&user, req.UserID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -112,7 +113,6 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	// Load tags
 	var tags []model.Tag
 	if len(req.TagIDs) > 0 {
 		if err := db.Find(&tags, req.TagIDs).Error; err != nil {
@@ -121,7 +121,6 @@ func PostRecipeHandler(c *gin.Context) {
 		}
 	}
 
-	// Load categories
 	var categories []model.Category
 	if len(req.CategoryIDs) > 0 {
 		if err := db.Find(&categories, req.CategoryIDs).Error; err != nil {
@@ -137,6 +136,7 @@ func PostRecipeHandler(c *gin.Context) {
 		Ingredients: req.Ingredients,
 		Tags:        tags,
 		Categories:  categories,
+		Steps:       req.Steps,
 	}
 
 	if err := db.Create(&recipe).Error; err != nil {
@@ -337,7 +337,8 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 	var input struct {
 		Title      string             `json:"title"`
 		Text       string             `json:"text"`
-		Ingredient []model.Ingredient `json:"ingridient"`
+		Ingredient []model.Ingredient `json:"ingridients"`
+		Steps      []model.Step       `json:"steps"`
 	}
 
 	var recipe model.Recipe
@@ -383,6 +384,17 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		for _, ing := range input.Ingredient {
 			ing.RecipeID = recipe.ID
 			if err := tx.Create(&ing).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&model.Step{}).Error; err != nil {
+			return err
+		}
+
+		for _, step := range input.Steps {
+			step.RecipeID = recipe.ID
+			if err := tx.Create(&step).Error; err != nil {
 				return err
 			}
 		}

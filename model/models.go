@@ -14,6 +14,7 @@ type Recipe struct {
 	Ratings     []Rating     `gorm:"foreignKey:RecipeID" json:"ratings"`
 	Tags        []Tag        `gorm:"many2many:recipe_tags" json:"tags"`
 	Categories  []Category   `gorm:"many2many:recipe_categories" json:"categories"`
+	Steps       []Step       `gorm:"foreignKey:RecipeID" json:"steps"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -23,6 +24,15 @@ type Ingredient struct {
 	Name      string `json:"name" binding:"required"`
 	Amount    string `json:"amount" binding:"required"`
 	RecipeID  uint   `json:"recipe_id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type Step struct {
+	ID        uint   `gorm:"primaryKey"`
+	RecipeID  uint   `json:"recipe_id" gorm:"index"`
+	Order     int    `json:"order" binding:"required"`
+	Text      string `json:"text" binding:"required"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
