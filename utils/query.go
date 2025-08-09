@@ -55,3 +55,26 @@ func ApplyRecipeFilters(query *gorm.DB, params map[string]string) *gorm.DB {
 
 	return query
 }
+
+func ApplySorting(query *gorm.DB, sortParam string) *gorm.DB {
+	switch sortParam {
+	case "title_asc":
+		return query.Order("title ASC")
+	case "title_desc":
+		return query.Order("title DESC")
+	case "created_asc":
+		return query.Order("created_at ASC")
+	case "created_desc":
+		return query.Order("created_at DESC")
+	case "rating_desc":
+		return query.Joins("LEFT JOIN ratings ON ratings.recipe_id = recipes.id").
+			Group("recipes.id").
+			Order("AVG(ratings.score) DESC")
+	case "favorites_desc":
+		return query.Joins("LEFT JOIN favorites ON favorites.recipe_id = recipes.id").
+			Group("recipes.id").
+			Order("COUNT(favorites.id) DESC")
+	default:
+		return query.Order("created_at DESC")
+	}
+}
