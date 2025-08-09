@@ -7,11 +7,25 @@ import (
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/migrate"
 	"github.com/Abb133Se/recepieshare/routes"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
+
+	r.Use(cors.Default())
+
+	// for future use the specific methods and config needed
+	// r.Use(cors.New(cors.Config{
+	//     AllowOrigins:     []string{"http://localhost:3000"}, // your frontend URL
+	//     AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+	//     AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+	//     ExposeHeaders:    []string{"Content-Length"},
+	//     AllowCredentials: true,
+	//     MaxAge: 12 * time.Hour,
+	// }))
+
 	routes.AddRoutes(r)
 
 	db, err1 := internal.GetGormInstance()
