@@ -60,7 +60,9 @@ func GetRecipeHandler(c *gin.Context) {
 
 	err = db.Preload("Ingredients").
 		Preload("Comments").
-		Preload("User").First(&recipe, validID).Error
+		Preload("User").
+		Preload("Tags").
+		Preload("Categories").First(&recipe, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
