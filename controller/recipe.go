@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
@@ -24,6 +23,19 @@ type MostPopularRecipe struct {
 	RecipeID      uint   `json:"recipe_id"`
 	Title         string `json:"title"`
 	FavoriteCount int64  `json:"favorite_count"`
+}
+
+type TagNamesInput struct {
+	Tags []string `json:"tags" binding:"required"`
+}
+
+type PostRecipeRequest struct {
+	Title       string             `json:"title" binding:"required"`
+	Text        string             `json:"text" binding:"required"`
+	UserID      uint               `json:"user_id" binding:"required"`
+	Ingredients []model.Ingredient `json:"ingredients" binding:"required"`
+	TagIDs      []uint             `json:"tag_ids"`
+	CategoryIDs []uint             `json:"category_ids"`
 }
 
 var API_KEY = "YTAMecQ6C06ClaR/HmS26g==OUlc0LkiJgLyFjhv"
@@ -69,66 +81,71 @@ func GetRecipeHandler(c *gin.Context) {
 }
 
 func PostRecipeHandler(c *gin.Context) {
-
-	var recipe model.Recipe
-	var user model.User
-
-	if err := c.ShouldBindJSON(&recipe); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
-		return
-	}
-
-	if recipe.UserID == 0 && recipe.User.ID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "UserID or User is required"})
-		return
-	}
-
-	_, err := utils.ValidateEntityID(strconv.Itoa(int(recipe.UserID)))
-	if err != nil {
+	var req PostRecipeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate UserID
+	if req.UserID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "failed to connect to db",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
 		return
 	}
 
-	err = db.First(&user, recipe.UserID).Error
-	if err != nil {
+	// Ensure user exists
+	var user model.User
+	if err := db.First(&user, req.UserID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
 	}
 
-	result := db.Create(&recipe)
-	if result.Error != nil {
-		c.JSON(500, gin.H{
-			"message": "failed to create record",
-		})
-		return
-	}
-
-	for i := range recipe.Ingredients {
-		recipe.Ingredients[i].ID = 0
-		recipe.Ingredients[i].RecipeID = recipe.ID
-		if err := db.Create(&recipe.Ingredients[i]).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to save ingredient"})
+	// Load tags
+	var tags []model.Tag
+	if len(req.TagIDs) > 0 {
+		if err := db.Find(&tags, req.TagIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load tags"})
 			return
 		}
 	}
 
-	c.JSON(200, gin.H{
-		"message": "recipe created succussfully",
-		"id":      recipe.ID,
+	// Load categories
+	var categories []model.Category
+	if len(req.CategoryIDs) > 0 {
+		if err := db.Find(&categories, req.CategoryIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load categories"})
+			return
+		}
+	}
+
+	recipe := model.Recipe{
+		Title:       req.Title,
+		Text:        req.Text,
+		UserID:      req.UserID,
+		Ingredients: req.Ingredients,
+		Tags:        tags,
+		Categories:  categories,
+	}
+
+	if err := db.Create(&recipe).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create recipe"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "recipe created successfully",
+		"recipe":  recipe,
 	})
-
 }
 
 func DeleteRecipeHandler(c *gin.Context) {
@@ -482,4 +499,165 @@ func GetRecipeNutritionHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"nutritional values": nutritionData})
+}
+
+func GetRecipeTagsHandler(c *gin.Context) {
+	recipeID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid recipe ID"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		return
+	}
+
+	var recipe model.Recipe
+	err = db.Preload("Tags").First(&recipe, recipeID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not retrieve recipe tags"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"tags": recipe.Tags})
+}
+
+func PutRecipeTagsHandler(c *gin.Context) {
+	recipeID := c.Param("id")
+
+	_, err := utils.ValidateEntityID(recipeID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		return
+	}
+
+	var recipe model.Recipe
+	if err := db.Preload("Tags").First(&recipe, recipeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		return
+	}
+
+	var input TagNamesInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
+		return
+	}
+
+	var tags []model.Tag
+	for _, tagName := range input.Tags {
+		var tag model.Tag
+		if err := db.Where("name = ?", tagName).First(&tag).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				tag = model.Tag{Name: tagName}
+				if err := db.Create(&tag).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tag: " + tagName})
+					return
+				}
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tag: " + tagName})
+				return
+			}
+		}
+		tags = append(tags, tag)
+	}
+
+	if err := db.Model(&recipe).Association("Tags").Replace(tags); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update recipe tags"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "recipe tags updated", "tags": tags})
+}
+
+func DeleteRecipeTagsHandler(c *gin.Context) {
+	recipeID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid recipe ID"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB connection failed"})
+		return
+	}
+
+	var recipe model.Recipe
+	if err := db.Preload("Tags").First(&recipe, recipeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		return
+	}
+
+	if err := db.Model(&recipe).Association("Tags").Clear(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear tags"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "tags removed from recipe"})
+}
+
+func GetRecipeCategoriesHandler(c *gin.Context) {
+	recipeID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid recipe ID"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		return
+	}
+
+	var recipe model.Recipe
+	err = db.Preload("Categories").First(&recipe, recipeID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not retrieve recipe categories"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"categories": recipe.Categories})
+}
+
+func DeleteRecipeCategoriesHandler(c *gin.Context) {
+	recipeID, err := utils.ValidateEntityID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid recipe ID"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB connection failed"})
+		return
+	}
+
+	var recipe model.Recipe
+	if err := db.Preload("Categories").First(&recipe, recipeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		return
+	}
+
+	if err := db.Model(&recipe).Association("Categories").Clear(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear categories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "categories removed from recipe"})
 }
