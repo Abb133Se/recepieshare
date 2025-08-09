@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	_ "github.com/Abb133Se/recepieshare/docs"
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/migrate"
 	"github.com/Abb133Se/recepieshare/routes"

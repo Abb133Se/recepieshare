@@ -4,6 +4,8 @@ import (
 	"github.com/Abb133Se/recepieshare/controller"
 	"github.com/Abb133Se/recepieshare/middleware"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func AddRoutes(r *gin.Engine) {
@@ -36,6 +38,9 @@ func AddRoutes(r *gin.Engine) {
 		public.POST("/login", controller.Login)
 		public.POST("/forgot-password", controller.ForgotPasswordHandler)
 		public.POST("/reset-password", controller.ResetPasswordHandler)
+
+		// Swagger routes
+		public.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	protected := r.Group("/")

@@ -39,8 +39,60 @@ type PostRecipeRequest struct {
 	Steps       []model.Step       `json:"steps"`
 }
 
+type RecipeResponse struct {
+	Message string       `json:"message"`
+	Data    model.Recipe `json:"data"`
+}
+
+type RecipeListResponse struct {
+	Message string         `json:"message"`
+	Data    []model.Recipe `json:"data"`
+}
+
+type SimpleMessageResponse struct {
+	Message string `json:"message"`
+}
+
+type TopRatedRecipesResponse []TopRatedRecipe
+type MostPopularRecipesResponse struct {
+	Recipes []MostPopularRecipe `json:"recipes"`
+}
+
+type IngredientsResponse struct {
+	Message string             `json:"message"`
+	Data    []model.Ingredient `json:"data"`
+}
+
+type CommentsResponse struct {
+	Message string          `json:"message"`
+	Data    []model.Comment `json:"data"`
+	Count   int64           `json:"count"`
+}
+
+type TagsResponse struct {
+	Tags []model.Tag `json:"tags"`
+}
+
+type RecipeCategoriesResponse struct {
+	Categories []model.Category `json:"categories"`
+}
+
+type NutritionResponse struct {
+	NutritionalValues interface{} `json:"nutritional_values"`
+}
+
 var API_KEY = "YTAMecQ6C06ClaR/HmS26g==OUlc0LkiJgLyFjhv"
 
+// GetRecipeHandler godoc
+// @Summary      Get recipe by ID
+// @Description  Get detailed recipe info including ingredients, comments, tags, categories, and steps
+// @Tags         recipes
+// @Param        id   path      int  true  "Recipe ID"
+// @Success      200  {object}  RecipeResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id} [get]
 func GetRecipeHandler(c *gin.Context) {
 
 	var recipe model.Recipe
@@ -79,12 +131,23 @@ func GetRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "successful",
-		"data":    recipe,
+	c.JSON(http.StatusOK, RecipeResponse{
+		Message: "successful",
+		Data:    recipe,
 	})
 }
 
+// PostRecipeHandler godoc
+// @Summary      Create a new recipe
+// @Description  Create a new recipe with ingredients, tags, categories, and steps
+// @Tags         recipes
+// @Accept       json
+// @Produce      json
+// @Param        recipe  body      model.Recipe  true  "Recipe data"
+// @Success      201     {object}  RecipeResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /recipe [post]
 func PostRecipeHandler(c *gin.Context) {
 	var req PostRecipeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -144,12 +207,22 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "recipe created successfully",
-		"recipe":  recipe,
+	c.JSON(http.StatusCreated, RecipeResponse{
+		Message: "recipe created successfully",
+		Data:    recipe,
 	})
 }
 
+// DeleteRecipeHandler godoc
+// @Summary      Delete a recipe by ID
+// @Description  Delete a recipe given its ID
+// @Tags         recipes
+// @Param        id   path      int  true  "Recipe ID"
+// @Success      200  {object}  SimpleMessageResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id} [delete]
 func DeleteRecipeHandler(c *gin.Context) {
 	var recepie model.Recipe
 
@@ -183,11 +256,21 @@ func DeleteRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"message": "Recipe deleted successfully",
+	c.JSON(200, SimpleMessageResponse{
+		Message: "Recipe deleted successfully",
 	})
 }
 
+// GetAllRecipeIngredientHandler godoc
+// @Summary      Get all ingredients for a recipe
+// @Description  Retrieve all ingredients for a specific recipe by ID
+// @Tags         recipes
+// @Param        id   path      int  true  "Recipe ID"
+// @Success      200  {object}  IngredientsResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id}/ingredients [get]
 func GetAllRecipeIngredientHandler(c *gin.Context) {
 
 	var Ingredient []model.Ingredient
@@ -221,13 +304,26 @@ func GetAllRecipeIngredientHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Ingredient successfully retrieved",
-		"data":    Ingredient,
+	c.JSON(http.StatusOK, IngredientsResponse{
+		Message: "Ingredient successfully retrieved",
+		Data:    Ingredient,
 	})
 
 }
 
+// GetAllRecipeCommentsHandler godoc
+// @Summary      Get paginated comments for a recipe
+// @Description  Retrieve comments with pagination and sorting for a recipe
+// @Tags         recipes
+// @Param        id      path      int     true  "Recipe ID"
+// @Param        limit   query     int     false "Limit number of comments"
+// @Param        offset  query     int     false "Offset for pagination"
+// @Param        sort    query     string  false "Sort order (e.g., date_desc)"
+// @Success      200     {object}  CommentsResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      404     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /recipe/{id}/comments [get]
 func GetAllRecipeCommentsHandler(c *gin.Context) {
 	var comments []model.Comment
 
@@ -283,15 +379,24 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-
-		"message": "comments retrieved successfully",
-		"data":    comments,
-		"count":   commentCount,
+	c.JSON(http.StatusOK, CommentsResponse{
+		Message: "comments retrieved successfully",
+		Data:    comments,
+		Count:   commentCount,
 	})
 
 }
 
+// GetAllRecipesHandler godoc
+// @Summary      Get paginated list of recipes
+// @Description  Retrieve recipes with pagination, includes comments and ingredients
+// @Tags         recipes
+// @Param        limit   query  int  false "Limit number of recipes"
+// @Param        offset  query  int  false "Offset for pagination"
+// @Success      200     {object}  RecipeListResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /recipe/list [get]
 func GetAllRecipesHandler(c *gin.Context) {
 
 	var recipes []model.Recipe
@@ -316,13 +421,26 @@ func GetAllRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "recipes retrieved successfully",
-		"data":    recipes,
+	c.JSON(http.StatusOK, RecipeListResponse{
+		Message: "recipes retrieved successfully",
+		Data:    recipes,
 	})
 
 }
 
+// PutRecipeUpdateHandler godoc
+// @Summary      Update a recipe
+// @Description  Updates the title, text, ingredients, and steps of a specific recipe
+// @Tags         recipes
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int     true  "Recipe ID"
+// @Param        recipe  body    object  true  "Updated recipe data"
+// @Success      200     {object}  SimpleMessageResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      404     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /recipe/{id} [put]
 func PutRecipeUpdateHandler(c *gin.Context) {
 	var input struct {
 		Title      string             `json:"title"`
@@ -397,10 +515,20 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "recipe updated successfully"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "recipe updated successfully"})
 
 }
 
+// GetTopRatedRecipesHandler godoc
+// @Summary      Get top rated recipes
+// @Description  Get recipes sorted by average rating, with total votes count
+// @Tags         recipes
+// @Param        limit   query  int  false "Limit number of recipes"
+// @Param        offset  query  int  false "Offset for pagination"
+// @Success      200     {array}  TopRatedRecipe
+// @Failure      400     {object} ErrorResponse
+// @Failure      500     {object} ErrorResponse
+// @Router       /recipes/top-rated [get]
 func GetTopRatedRecipesHandler(c *gin.Context) {
 	var results []TopRatedRecipe
 	var limit, offset = 1, 0
@@ -436,6 +564,16 @@ func GetTopRatedRecipesHandler(c *gin.Context) {
 
 }
 
+// GetMostPopularRecipesHandler godoc
+// @Summary      Get most popular recipes by favorites
+// @Description  Get recipes sorted by number of favorites
+// @Tags         recipes
+// @Param        limit   query  int  false "Limit number of recipes"
+// @Param        offset  query  int  false "Offset for pagination"
+// @Success      200     {object} MostPopularRecipesResponse
+// @Failure      400     {object} ErrorResponse
+// @Failure      500     {object} ErrorResponse
+// @Router       /recipes/most-popular [get]
 func GetMostPopularRecipesHandler(c *gin.Context) {
 	var results []MostPopularRecipe
 	var limit, offset = 1, 0
@@ -467,9 +605,18 @@ func GetMostPopularRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"recipes": results})
+	c.JSON(http.StatusOK, MostPopularRecipesResponse{Recipes: results})
 }
 
+// GetRecipeNutritionHandler godoc
+// @Summary      Get nutritional values for a recipe
+// @Description  Estimate nutrition info based on ingredients via AI model
+// @Tags         recipes
+// @Param        id   path      int  true  "Recipe ID"
+// @Success      200  {object}  NutritionResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id}/calories [get]
 func GetRecipeNutritionHandler(c *gin.Context) {
 	id := c.Param("id")
 
@@ -502,9 +649,19 @@ func GetRecipeNutritionHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"nutritional values": nutritionData})
+	c.JSON(http.StatusOK, NutritionResponse{NutritionalValues: nutritionData})
 }
 
+// GetRecipeTagsHandler godoc
+// @Summary      Get tags for a recipe
+// @Description  Retrieves all tags associated with the specified recipe
+// @Tags         recipes
+// @Param        id   path      int  true  "Recipe ID"
+// @Success      200  {object}  TagsResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id}/tags [get]
 func GetRecipeTagsHandler(c *gin.Context) {
 	recipeID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
@@ -529,9 +686,25 @@ func GetRecipeTagsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"tags": recipe.Tags})
+	c.JSON(http.StatusOK, TagsResponse{Tags: recipe.Tags})
 }
 
+// PutRecipeTagsHandler godoc
+// @Summary      Update tags for a recipe
+// @Description  Replaces the tags associated with the specified recipe.
+//
+//	If a tag does not exist, it will be created.
+//
+// @Tags         recipes
+// @Accept       json
+// @Produce      json
+// @Param        id    path   int            true  "Recipe ID"
+// @Param        tags  body   TagNamesInput  true  "List of tag names"
+// @Success      200   {object}  TagsResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      404   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /recipe/{id}/tags [put]
 func PutRecipeTagsHandler(c *gin.Context) {
 	recipeID := c.Param("id")
 
@@ -585,6 +758,17 @@ func PutRecipeTagsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "recipe tags updated", "tags": tags})
 }
 
+// DeleteRecipeTagsHandler godoc
+// @Summary      Remove all tags from a recipe
+// @Description  Clears all tags associated with the specified recipe.
+// @Tags         recipes
+// @Produce      json
+// @Param        id   path   int  true  "Recipe ID"
+// @Success      200  {object}  SimpleMessageResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id}/tags [delete]
 func DeleteRecipeTagsHandler(c *gin.Context) {
 	recipeID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
@@ -609,9 +793,20 @@ func DeleteRecipeTagsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "tags removed from recipe"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "tags removed from recipe"})
 }
 
+// GetRecipeCategoriesHandler godoc
+// @Summary      Get categories for a recipe
+// @Description  Retrieves all categories associated with the specified recipe.
+// @Tags         recipes
+// @Produce      json
+// @Param        id   path   int  true  "Recipe ID"
+// @Success      200  {object}  CategoriesResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id}/categories [get]
 func GetRecipeCategoriesHandler(c *gin.Context) {
 	recipeID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
@@ -636,9 +831,20 @@ func GetRecipeCategoriesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"categories": recipe.Categories})
+	c.JSON(http.StatusOK, RecipeCategoriesResponse{Categories: recipe.Categories})
 }
 
+// DeleteRecipeCategoriesHandler godoc
+// @Summary      Remove all categories from a recipe
+// @Description  Clears all categories associated with the specified recipe.
+// @Tags         recipes
+// @Produce      json
+// @Param        id   path   int  true  "Recipe ID"
+// @Success      200  {object}  SimpleMessageResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipe/{id}/categories [delete]
 func DeleteRecipeCategoriesHandler(c *gin.Context) {
 	recipeID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
@@ -663,9 +869,26 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "categories removed from recipe"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "categories removed from recipe"})
 }
 
+// SearchRecipesHandler godoc
+// @Summary      Search recipes
+// @Description  Retrieves a list of recipes matching the given filters.
+// @Tags         recipes
+// @Produce      json
+// @Param        title         query   string  false  "Filter by recipe title (partial match)"
+// @Param        ingredient    query   string  false  "Filter by ingredient name"
+// @Param        tag_ids       query   string  false  "Comma-separated list of tag IDs"
+// @Param        category_ids  query   string  false  "Comma-separated list of category IDs"
+// @Param        user_id       query   string  false  "Filter by recipe author's user ID"
+// @Param        sort          query   string  false  "Sort field (e.g., 'title', 'created_at')"
+// @Param        limit         query   int     false  "Max number of recipes to return"
+// @Param        offset        query   int     false  "Number of recipes to skip"
+// @Success      200  {array}   RecipeResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /recipes/search [get]
 func SearchRecipesHandler(c *gin.Context) {
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -711,6 +934,6 @@ func SearchRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": recipes})
+	c.JSON(http.StatusOK, RecipeListResponse{Data: recipes})
 
 }

@@ -11,6 +11,23 @@ import (
 	"gorm.io/gorm"
 )
 
+type FavoriteResponse struct {
+	Message    string `json:"message"`
+	FavoriteID uint   `json:"id"`
+}
+
+// PostFavoriteHandler godoc
+// @Summary      Add a favorite recipe for a user
+// @Description  Adds a favorite record linking a user and a recipe
+// @Tags         favorites
+// @Accept       json
+// @Produce      json
+// @Param        favorite  body      model.Favorite  true  "Favorite data"
+// @Success      200       {object}  FavoriteResponse
+// @Failure      400       {object}  ErrorResponse
+// @Failure      404       {object}  ErrorResponse
+// @Failure      500       {object}  ErrorResponse
+// @Router       /favorite [post]
 func PostFavoriteHandler(c *gin.Context) {
 	var favorite model.Favorite
 	var user model.User
@@ -67,12 +84,23 @@ func PostFavoriteHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "favorite added successfully",
-		"id":      favorite.ID,
+	c.JSON(http.StatusOK, FavoriteResponse{
+		Message:    "favorite added successfully",
+		FavoriteID: favorite.ID,
 	})
 }
 
+// DeleteFavoriteHandler godoc
+// @Summary      Delete a favorite by ID
+// @Description  Deletes a favorite record by its ID
+// @Tags         favorites
+// @Produce      json
+// @Param        id    path      int  true  "Favorite ID"
+// @Success      200   {object}  SimpleMessageResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      404   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /favorite/{id} [delete]
 func DeleteFavoriteHandler(c *gin.Context) {
 	var favorite model.Favorite
 
@@ -99,6 +127,6 @@ func DeleteFavoriteHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "favorite deleted successfully"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "favorite deleted successfully"})
 
 }

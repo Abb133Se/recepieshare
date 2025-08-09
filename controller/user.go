@@ -10,6 +10,34 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserRecipesResponse struct {
+	Message string         `json:"message"`
+	Data    []model.Recipe `json:"data"`
+}
+
+type UserFavoritesResponse struct {
+	Message string           `json:"message"`
+	Data    []model.Favorite `json:"data"`
+}
+
+type UserRatingsResponse struct {
+	Message string         `json:"message"`
+	Data    []model.Rating `json:"data"`
+}
+
+// GetUserRecipesHandler godoc
+// @Summary      Get recipes created by a user
+// @Description  Retrieves recipes authored by the specified user, supports pagination via limit and offset query params
+// @Tags         users
+// @Produce      json
+// @Param        id      path      int     true   "User ID"
+// @Param        limit   query     int     false  "Limit number of recipes returned"
+// @Param        offset  query     int     false  "Offset for pagination"
+// @Success      200     {object}  UserRecipesResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      404     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /user/{id}/recipes [get]
 func GetUserRecipesHandler(c *gin.Context) {
 	var recipes []model.Recipe
 	var limit, offset = 1, 0
@@ -55,13 +83,26 @@ func GetUserRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "recipes fetcjed successfully",
-		"data":    recipes,
+	c.JSON(http.StatusOK, UserRecipesResponse{
+		Message: "recipes fetcjed successfully",
+		Data:    recipes,
 	})
 
 }
 
+// GetUserFavoritesHandler godoc
+// @Summary      Get favorite recipes of a user
+// @Description  Retrieves favorite recipes of the specified user, supports pagination via limit and offset
+// @Tags         users
+// @Produce      json
+// @Param        id      path      int     true   "User ID"
+// @Param        limit   query     int     false  "Limit number of favorites returned"
+// @Param        offset  query     int     false  "Offset for pagination"
+// @Success      200     {object}  UserFavoritesResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      404     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /user/{id}/favorites [get]
 func GetUserFavoritesHandler(c *gin.Context) {
 	var favorites []model.Favorite
 
@@ -101,13 +142,26 @@ func GetUserFavoritesHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "favorites fetched successfully",
-		"data":    favorites,
+	c.JSON(http.StatusOK, UserFavoritesResponse{
+		Message: "favorites fetched successfully",
+		Data:    favorites,
 	})
 
 }
 
+// GetUserRatingsHandler godoc
+// @Summary      Get ratings given by a user
+// @Description  Retrieves ratings provided by the specified user, supports pagination via limit and offset
+// @Tags         users
+// @Produce      json
+// @Param        id      path      int     true   "User ID"
+// @Param        limit   query     int     false  "Limit number of ratings returned"
+// @Param        offset  query     int     false  "Offset for pagination"
+// @Success      200     {object}  UserRatingsResponse
+// @Failure      400     {object}  ErrorResponse
+// @Failure      404     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /user/{id}/ratings [get]
 func GetUserRatingsHandler(c *gin.Context) {
 	var ratings []model.Rating
 
@@ -149,8 +203,8 @@ func GetUserRatingsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "ratings fetched successfully",
-		"data":    ratings,
+	c.JSON(http.StatusOK, UserRatingsResponse{
+		Message: "ratings fetched successfully",
+		Data:    ratings,
 	})
 }
