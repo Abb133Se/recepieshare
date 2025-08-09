@@ -249,16 +249,7 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 	limit = validLimit
 	offset = validOffset
 
-	sort := c.DefaultQuery("sort", "")
-	var order string
-	switch sort {
-	case "likes_desc":
-		order = "likes DESC"
-	case "likes_asc":
-		order = "likes ASC"
-	default:
-		order = ""
-	}
+	sortParam := c.DefaultQuery("sort", "date_desc")
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -277,9 +268,8 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 	}
 
 	query := db.Model(&model.Comment{}).Where("recipe_id = ?", validID).Limit(limit).Offset(offset)
-	if order != "" {
-		query = query.Order(order)
-	}
+	query = utils.ApplyCommentSorting(query, sortParam)
+
 	err = query.Find(&comments).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve comments"})
@@ -701,7 +691,7 @@ func SearchRecipesHandler(c *gin.Context) {
 	query = utils.ApplyRecipeFilters(query, params)
 
 	sortParam := c.Query("sort")
-	query = utils.ApplySorting(query, sortParam)
+	query = utils.ApplyRecipeSorting(query, sortParam)
 
 	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
 	if err != nil {
