@@ -11,6 +11,22 @@ import (
 	"gorm.io/gorm"
 )
 
+type TagResponse struct {
+	Message string    `json:"message,omitempty"`
+	Data    model.Tag `json:"data"`
+}
+
+// GetTagHandler godoc
+// @Summary      Get a tag by ID
+// @Description  Retrieves a tag by its ID
+// @Tags         tags
+// @Produce      json
+// @Param        id   path      int  true  "Tag ID"
+// @Success      200  {object}  TagResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /tag/{id} [get]
 func GetTagHandler(c *gin.Context) {
 	var tag model.Tag
 
@@ -35,9 +51,21 @@ func GetTagHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "successful", "data": tag})
+	c.JSON(http.StatusOK, TagResponse{Message: "successful", Data: tag})
 }
 
+// PostTagHandler godoc
+// @Summary      Create a new tag
+// @Description  Creates a new tag. Optionally associates it with recipes by IDs.
+// @Tags         tags
+// @Accept       json
+// @Produce      json
+// @Param        tag  body      model.Tag  true  "Tag data"
+// @Success      201  {object}  TagResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      409  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /tag [post]
 func PostTagHandler(c *gin.Context) {
 	var tag model.Tag
 
@@ -72,9 +100,17 @@ func PostTagHandler(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "tag created", "data": tag})
+	c.JSON(http.StatusCreated, TagResponse{Message: "tag created", Data: tag})
 }
 
+// GetAllTagsHandler godoc
+// @Summary      Get all tags
+// @Description  Retrieves all tags with their associated recipes
+// @Tags         tags
+// @Produce      json
+// @Success      200  {array}   TagResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /tags [get]
 func GetAllTagsHandler(c *gin.Context) {
 	var tags []model.Tag
 
@@ -90,9 +126,22 @@ func GetAllTagsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "success", "data": tags})
+	c.JSON(http.StatusOK, TagsResponse{Tags: tags})
 }
 
+// PutTagHandler godoc
+// @Summary      Update a tag by ID
+// @Description  Updates the name of a tag specified by its ID
+// @Tags         tags
+// @Accept       json
+// @Produce      json
+// @Param        id   path      int  true  "Tag ID"
+// @Param        tag  body      TagsResponse  true  "Updated tag data"
+// @Success      200  {object}  TagResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /tag/{id} [put]
 func PutTagHandler(c *gin.Context) {
 	var tag model.Tag
 	tagID, err := utils.ValidateEntityID(c.Param("id"))
@@ -124,9 +173,19 @@ func PutTagHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "tag updated", "data": existing})
+	c.JSON(http.StatusOK, TagResponse{Message: "tag updated", Data: existing})
 }
 
+// DeleteTagHandler godoc
+// @Summary      Delete a tag by ID
+// @Description  Deletes a tag and removes all its associations with recipes
+// @Tags         tags
+// @Produce      json
+// @Param        id   path      int  true  "Tag ID"
+// @Success      200  {object}  SimpleMessageResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /tag/{id} [delete]
 func DeleteTagHandler(c *gin.Context) {
 	tagID := c.Param("id")
 	var tag model.Tag
@@ -152,5 +211,5 @@ func DeleteTagHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "tag deleted successfully"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "tag deleted successfully"})
 }
