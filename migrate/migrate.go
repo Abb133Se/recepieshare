@@ -19,5 +19,6 @@ func AutoMigration(db *gorm.DB) error {
 		&model.Rating{},
 		&model.Tag{},
 		&model.Category{},
+		&model.Step{},
 	)
 }
