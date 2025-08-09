@@ -2,7 +2,6 @@ package controller
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -15,73 +14,132 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserSignupRequest struct {
+	Name     string `json:"name" binding:"required"`
+	LastName string `json:"last_name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type UserLoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type UserLoginResponse struct {
+	Token string `json:"token"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ForgotPasswordResponse struct {
+	Message    string `json:"message"`
+	ResetToken string `json:"reset_token,omitempty"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+type ResetPasswordResponse struct {
+	Message string `json:"message"`
+}
+
+// Signup godoc
+// @Summary      Register a new user
+// @Description  Creates a new user account
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        user  body      UserSignupRequest  true  "User signup info"
+// @Success      200   {object}  SimpleMessageResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      409   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /signup [post]
 func Signup(c *gin.Context) {
-	var req model.User
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req UserSignupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	fmt.Println(req)
 	if req.Name == "" || req.LastName == "" || req.Email == "" || req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user information shouldn't be empty"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "user information shouldn't be empty"})
 		return
 	}
 
 	salt, err := utils.GenerateSalt()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate salt"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to generate salt"})
 		return
 	}
-	req.Salt = salt
 
 	hashedPassword := utils.HashPassword(req.Password, salt)
-	req.Password = hashedPassword
+
+	user := model.User{
+		Name:     req.Name,
+		LastName: req.LastName,
+		Email:    req.Email,
+		Password: hashedPassword,
+		Salt:     salt,
+	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
 		return
 	}
 
-	err = db.Create(&req).Error
+	err = db.Create(&user).Error
 	if err != nil {
 		var mysqlErr *mysql.MySQLError
 		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-			c.JSON(http.StatusConflict, gin.H{"error": "email already exists"})
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "email already exists"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to create user"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "user registered successfully"})
-
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "user registered successfully"})
 }
 
+// Login godoc
+// @Summary      User login
+// @Description  Authenticate user and return JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      UserLoginRequest  true  "Login credentials"
+// @Success      200          {object}  UserLoginResponse
+// @Failure      400          {object}  ErrorResponse
+// @Failure      401          {object}  ErrorResponse
+// @Failure      500          {object}  ErrorResponse
+// @Router       /login [post]
 func Login(c *gin.Context) {
-	var req struct {
-		Email    string
-		Password string
-	}
+	var req UserLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
 		return
 	}
 
 	var user model.User
 	if err = db.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password 1"})
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid email or password"})
 			return
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve user"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve user"})
 			return
 		}
 	}
@@ -89,44 +147,52 @@ func Login(c *gin.Context) {
 	enteredPassword := utils.HashPassword(req.Password, user.Salt)
 
 	if user.Password != enteredPassword {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password 2"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid email or password"})
 		return
 	}
 
-	token, err := token.GenerateToken(user.ID, user.Email)
+	tokenStr, err := token.GenerateToken(user.ID, user.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to generate token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, UserLoginResponse{Token: tokenStr})
 }
 
+// ForgotPasswordHandler godoc
+// @Summary      Initiate password reset
+// @Description  Sends password reset instructions if email exists
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        email  body      ForgotPasswordRequest  true  "User email"
+// @Success      200    {object}  ForgotPasswordResponse
+// @Failure      400    {object}  ErrorResponse
+// @Failure      500    {object}  ErrorResponse
+// @Router       /forgot-password [post]
 func ForgotPasswordHandler(c *gin.Context) {
-	var req struct {
-		Email string `json:"email" binding:"required,email"`
-	}
-
+	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid email"})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
 		return
 	}
 
 	var user model.User
 	if err := db.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "if email exists, reset instructions have been sent"})
+		c.JSON(http.StatusOK, ForgotPasswordResponse{Message: "if email exists, reset instructions have been sent"})
 		return
 	}
 
 	resetToken, err := token.GenerateResetToken()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate reset token"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to generate reset token"})
 		return
 	}
 
@@ -135,45 +201,54 @@ func ForgotPasswordHandler(c *gin.Context) {
 	user.PasswordResetExpiresAt = &expiresAt
 
 	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store reset token"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to store reset token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "reset link sent", "reset_token": resetToken})
-
+	c.JSON(http.StatusOK, ForgotPasswordResponse{
+		Message:    "reset link sent",
+		ResetToken: resetToken,
+	})
 }
 
+// ResetPasswordHandler godoc
+// @Summary      Reset user password
+// @Description  Resets password using reset token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        data  body      ResetPasswordRequest  true  "Reset password data"
+// @Success      200   {object}  ResetPasswordResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /reset-password [post]
 func ResetPasswordHandler(c *gin.Context) {
-	var req struct {
-		Token       string `json:"token" binding:"required"`
-		NewPassword string `json:"new_password" binding:"required"`
-	}
-
+	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid input"})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
 		return
 	}
 
 	var user model.User
 	if err := db.Where("password_reset_token = ?", req.Token).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid or expired token"})
 		return
 	}
 
-	if user.PasswordResetExpiresAt.Before(time.Now()) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "token has expired"})
+	if user.PasswordResetExpiresAt == nil || user.PasswordResetExpiresAt.Before(time.Now()) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "token has expired"})
 		return
 	}
 
 	salt, err := utils.GenerateSalt()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate salt"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to generate salt"})
 		return
 	}
 	hashed := utils.HashPassword(req.NewPassword, salt)
@@ -184,10 +259,9 @@ func ResetPasswordHandler(c *gin.Context) {
 	user.PasswordResetExpiresAt = nil
 
 	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reset password"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to reset password"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
-
+	c.JSON(http.StatusOK, ResetPasswordResponse{Message: "password reset successfully"})
 }
