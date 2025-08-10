@@ -1772,6 +1772,15 @@ paths:
   /tags:
     get:
       description: Retrieves all tags with their associated recipes
+      parameters:
+      - description: Limit number of recipes returned
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:

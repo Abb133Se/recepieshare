@@ -2065,6 +2065,20 @@ const docTemplate = `{
                     "tags"
                 ],
                 "summary": "Get all tags",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit number of recipes returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
