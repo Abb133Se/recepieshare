@@ -50,8 +50,8 @@ type User struct {
 	Recipes                []Recipe   `gorm:"foreignKey: UserID" json:"recipes"`
 	Favorites              []Favorite `gorm:"foreignKey: UserID" json:"favorites"`
 	Ratings                []Rating   `gorm:"foreignKey:UserID" json:"ratings"`
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	CreatedAt              time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt              time.Time  `gorm:"autoUpdateTime"`
 }
 
 type Comment struct {
