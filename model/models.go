@@ -15,26 +15,26 @@ type Recipe struct {
 	Tags        []Tag        `gorm:"many2many:recipe_tags" json:"tags"`
 	Categories  []Category   `gorm:"many2many:recipe_categories" json:"categories"`
 	Steps       []Step       `gorm:"foreignKey:RecipeID" json:"steps"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	CreatedAt   time.Time    `gorm:"autoCreateTime"`
+	UpdatedAt   time.Time    `gorm:"autoUpdateTime"`
 }
 
 type Ingredient struct {
-	ID        uint   `gorm:"primaryKey"`
-	Name      string `json:"name" binding:"required"`
-	Amount    string `json:"amount" binding:"required"`
-	RecipeID  uint   `json:"recipe_id"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `gorm:"primaryKey"`
+	Name      string    `json:"name" binding:"required"`
+	Amount    string    `json:"amount" binding:"required"`
+	RecipeID  uint      `json:"recipe_id"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 type Step struct {
-	ID        uint   `gorm:"primaryKey"`
-	RecipeID  uint   `json:"recipe_id" gorm:"index"`
-	Order     int    `json:"order" binding:"required"`
-	Text      string `json:"text" binding:"required"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `gorm:"primaryKey"`
+	RecipeID  uint      `json:"recipe_id" gorm:"index"`
+	Order     int       `json:"order" binding:"required"`
+	Text      string    `json:"text" binding:"required"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 type User struct {
@@ -55,45 +55,45 @@ type User struct {
 }
 
 type Comment struct {
-	ID          uint   `gorm:"primaryKey"`
-	Title       string `json:"title" binding:"required"`
-	Description string `json:"description" binding:"required"`
-	Likes       int    `gorm:"default:0" json:"likes"`
-	UserID      uint   `json:"user_id"`
-	RecipeID    uint   `json:"recipe_id"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          uint      `gorm:"primaryKey"`
+	Title       string    `json:"title" binding:"required"`
+	Description string    `json:"description" binding:"required"`
+	Likes       int       `gorm:"default:0" json:"likes"`
+	UserID      uint      `json:"user_id"`
+	RecipeID    uint      `json:"recipe_id"`
+	CreatedAt   time.Time `gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
 }
 
 type Favorite struct {
-	ID        uint `gorm:"primaryKey"`
-	UserID    uint `json:"user_id" binding:"required"`
-	RecipeID  uint `json:"recipe_id" binding:"required"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `gorm:"primaryKey"`
+	UserID    uint      `json:"user_id" binding:"required"`
+	RecipeID  uint      `json:"recipe_id" binding:"required"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 type Rating struct {
-	ID        uint `gorm:"primaryKey"`
-	RecipeID  uint `json:"recipe_id"`
-	UserID    uint `json:"user_id"`
-	Score     uint `gorm:"check:score >= 1 AND score <= 5" json:"score" binding:"required"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `gorm:"primaryKey"`
+	RecipeID  uint      `json:"recipe_id"`
+	UserID    uint      `json:"user_id"`
+	Score     uint      `gorm:"check:score >= 1 AND score <= 5" json:"score" binding:"required"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 type Tag struct {
-	ID        uint     `gorm:"primaryKey"`
-	Name      string   `json:"name" binding:"required" gorm:"unique;not null"`
-	Recipes   []Recipe `gorm:"many2many:recipe_tags" json:"-"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `gorm:"primaryKey"`
+	Name      string    `json:"name" binding:"required" gorm:"unique;not null"`
+	Recipes   []Recipe  `gorm:"many2many:recipe_tags" json:"-"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 type Category struct {
-	ID        uint     `gorm:"primaryKey"`
-	Name      string   `json:"name" binding:"required" gorm:"unique;not null"`
-	Recipes   []Recipe `gorm:"many2many:recipe_categories" json:"-"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `gorm:"primaryKey"`
+	Name      string    `json:"name" binding:"required" gorm:"unique;not null"`
+	Recipes   []Recipe  `gorm:"many2many:recipe_categories" json:"-"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
