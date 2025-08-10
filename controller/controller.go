@@ -209,7 +209,12 @@ func ForgotPasswordHandler(c *gin.Context) {
 	expiresAt := time.Now().Add(15 * time.Minute)
 	user.PasswordResetExpiresAt = &expiresAt
 
-	if err := db.Save(&user).Error; err != nil {
+	err = db.Model(&user).Updates(map[string]any{
+		"password_reset_token":      resetToken,
+		"password_reset_expires_at": expiresAt,
+		"updated_at":                time.Now()}).Error
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to store reset token"})
 		return
 	}
