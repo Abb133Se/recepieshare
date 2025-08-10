@@ -108,11 +108,21 @@ func PostTagHandler(c *gin.Context) {
 // @Description  Retrieves all tags with their associated recipes
 // @Tags         tags
 // @Produce      json
+// @Param        limit   query     int     false  "Limit number of recipes returned"
+// @Param        offset  query     int     false  "Offset for pagination"
 // @Success      200  {array}   TagResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /tags [get]
 func GetAllTagsHandler(c *gin.Context) {
 	var tags []model.Tag
+
+	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	limit := validLimit
+	offset := validOffset
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -120,7 +130,7 @@ func GetAllTagsHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Preload("Recipes").Find(&tags).Error
+	err = db.Preload("Recipes").Limit(limit).Offset(offset).Find(&tags).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch tags"})
 		return
