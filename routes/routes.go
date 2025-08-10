@@ -55,6 +55,7 @@ func AddRoutes(r *gin.Engine) {
 		protected.PUT("/recipe/:id/tags", controller.PutRecipeTagsHandler)
 		protected.DELETE("/recipe/:id/tags", controller.DeleteRecipeTagsHandler)
 		protected.GET("/recipe/:id/categories", controller.GetRecipeCategoriesHandler)
+		protected.GET("/recipe/:id/tags", controller.GetRecipeTagsHandler)
 		protected.DELETE("/recipe/:id/categories", controller.DeleteRecipeCategoriesHandler)
 
 		// Ingredient management
