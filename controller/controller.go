@@ -72,6 +72,21 @@ func Signup(c *gin.Context) {
 		return
 	}
 
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		return
+	}
+
+	var existingUser model.User
+	if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, ErrorResponse{Error: "email already exists"})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to check email"})
+		return
+	}
+
 	salt, err := utils.GenerateSalt()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to generate salt"})
@@ -86,12 +101,6 @@ func Signup(c *gin.Context) {
 		Email:    req.Email,
 		Password: hashedPassword,
 		Salt:     salt,
-	}
-
-	db, err := internal.GetGormInstance()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
-		return
 	}
 
 	err = db.Create(&user).Error
