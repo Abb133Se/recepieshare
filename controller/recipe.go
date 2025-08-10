@@ -248,11 +248,8 @@ func DeleteRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.Delete(&model.Recipe{}, validID).Error
-	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "Failed to delete recipe",
-		})
+	if err := db.Delete(&recepie).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to delete recipe"})
 		return
 	}
 
@@ -400,15 +397,14 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 func GetAllRecipesHandler(c *gin.Context) {
 
 	var recipes []model.Recipe
-	var limit, offset = 1, 0
 
 	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	limit = validLimit
-	offset = validOffset
+	limit := validLimit
+	offset := validOffset
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -416,7 +412,7 @@ func GetAllRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	if err = db.Preload("Comments").Preload("Ingredients").Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
+	if err = db.Find(&recipes).Limit(limit).Offset(offset).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipes"})
 		return
 	}
@@ -814,6 +810,15 @@ func GetRecipeCategoriesHandler(c *gin.Context) {
 		return
 	}
 
+	var limit, offset = 1, 0
+	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	limit = validLimit
+	offset = validOffset
+
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
@@ -821,7 +826,7 @@ func GetRecipeCategoriesHandler(c *gin.Context) {
 	}
 
 	var recipe model.Recipe
-	err = db.Preload("Categories").First(&recipe, recipeID).Error
+	err = db.Preload("Categories").First(&recipe, recipeID).Limit(limit).Offset(offset).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
@@ -905,11 +910,9 @@ func SearchRecipesHandler(c *gin.Context) {
 	}
 
 	query := db.Model(&model.Recipe{}).
-		Preload("Ingredients").
 		Preload("Tags").
 		Preload("Categories").
-		Preload("User").
-		Preload("Steps")
+		Preload("User")
 
 	query = utils.ApplyRecipeFilters(query, params)
 
