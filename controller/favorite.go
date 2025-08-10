@@ -78,6 +78,15 @@ func PostFavoriteHandler(c *gin.Context) {
 		return
 	}
 
+	var existingFavorite model.Favorite
+	if err := db.Where("user_id = ? AND recipe_id = ?", favorite.UserID, favorite.RecipeID).First(&existingFavorite).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "favorite already exists"})
+		return
+	} else if err != gorm.ErrRecordNotFound {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing favorite"})
+		return
+	}
+
 	err = db.Create(&favorite).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add favorite"})
