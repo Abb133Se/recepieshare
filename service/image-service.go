@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -21,6 +22,35 @@ func UploadImage(c *gin.Context, entityType string, entityID uint, backend inter
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		return nil, fmt.Errorf("database connection error: %w", err)
+	}
+
+	// 1. making sure entities exist
+	switch entityType {
+	case "user":
+		var user model.User
+		if err := db.First(&user, entityID).Error; err != nil {
+			return nil, errors.New("user not found")
+		}
+	case "recipe":
+		var recipe model.Recipe
+		if err := db.First(&recipe, entityID).Error; err != nil {
+			return nil, errors.New("recipe not found")
+		}
+	default:
+		return nil, errors.New("unsupported entity type")
+	}
+
+	// 2. Enforce only one image for users
+	if entityType == "user" {
+		var count int64
+		if err := db.Model(&model.Image{}).
+			Where("entity_type = ? AND entity_id = ?", entityType, entityID).
+			Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("failed to check existing user images: %w", err)
+		}
+		if count > 0 {
+			return nil, fmt.Errorf("a profile image already exists for user ID %d", entityID)
+		}
 	}
 
 	fileHeader, err := c.FormFile("image")
