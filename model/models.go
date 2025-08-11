@@ -97,3 +97,13 @@ type Category struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
+
+type Image struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	EntityType string    `gorm:"index;size:50" json:"entity_type"`
+	EntityID   uint      `gorm:"index" json:"entity_id"`
+	Path       string    `json:"path"`
+	Format     string    `json:"format"`
+	Size       int64     `json:"size"`
+	CreatedAt  time.Time `json:"created_at"`
+}

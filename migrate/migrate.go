@@ -20,5 +20,6 @@ func AutoMigration(db *gorm.DB) error {
 		&model.Tag{},
 		&model.Category{},
 		&model.Step{},
+		&model.Image{},
 	)
 }
