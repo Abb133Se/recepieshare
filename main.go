@@ -27,6 +27,8 @@ func main() {
 	//     MaxAge: 12 * time.Hour,
 	// }))
 
+	internal.InitLocalStorage("uploads")
+
 	routes.AddRoutes(r)
 
 	db, err1 := internal.GetGormInstance()
