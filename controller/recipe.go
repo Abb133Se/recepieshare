@@ -32,7 +32,6 @@ type TagNamesInput struct {
 type PostRecipeRequest struct {
 	Title       string             `json:"title" binding:"required"`
 	Text        string             `json:"text" binding:"required"`
-	UserID      uint               `json:"user_id" binding:"required"`
 	Ingredients []model.Ingredient `json:"ingredients" binding:"required"`
 	TagIDs      []uint             `json:"tag_ids"`
 	CategoryIDs []uint             `json:"category_ids"`
@@ -155,7 +154,8 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	if req.UserID == 0 {
+	userID := c.GetUint("userID")
+	if userID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
 		return
 	}
@@ -167,7 +167,7 @@ func PostRecipeHandler(c *gin.Context) {
 	}
 
 	var user model.User
-	if err := db.First(&user, req.UserID).Error; err != nil {
+	if err := db.First(&user, userID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "user not found"})
 			return
@@ -195,7 +195,7 @@ func PostRecipeHandler(c *gin.Context) {
 	recipe := model.Recipe{
 		Title:       req.Title,
 		Text:        req.Text,
-		UserID:      req.UserID,
+		UserID:      userID,
 		Ingredients: req.Ingredients,
 		Tags:        tags,
 		Categories:  categories,

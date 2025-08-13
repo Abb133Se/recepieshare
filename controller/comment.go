@@ -54,6 +54,7 @@ func PostCommentHandler(c *gin.Context) {
 		}
 	}
 
+	comment.UserID = c.GetUint("userID")
 	if comment.UserID != 0 {
 		if _, err := utils.ValidateEntityID(strconv.Itoa(int(comment.UserID))); err != nil {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
