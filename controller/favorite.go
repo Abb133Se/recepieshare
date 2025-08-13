@@ -49,6 +49,8 @@ func PostFavoriteHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	favorite.UserID = c.GetUint("uerID")
 	_, err = utils.ValidateEntityID(strconv.Itoa(int(favorite.UserID)))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

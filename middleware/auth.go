@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Abb133Se/recepieshare/controller"
 	"github.com/Abb133Se/recepieshare/token"
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +35,15 @@ func AuthenticatJWT() gin.HandlerFunc {
 		}
 
 		c.Set("claims", claims)
+
+		if idFloat, ok := claims["sub"].(float64); ok {
+			c.Set("userID", uint(idFloat))
+		} else {
+			c.JSON(http.StatusUnauthorized, controller.SimpleMessageResponse{Message: "user id not found in token claims"})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

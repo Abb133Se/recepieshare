@@ -278,7 +278,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Comment"
+                            "$ref": "#/definitions/controller.PostCommentRequest"
                         }
                     }
                 ],
@@ -990,7 +990,7 @@ const docTemplate = `{
         },
         "/recipe": {
             "post": {
-                "description": "Create a new recipe with ingredients, tags, categories, and steps",
+                "description": "Create a new recipe with ingredients, tags (by IDs or names), categories, and steps. The \"tag_id\" field is used to list already existing tags and \"tag_names\" is used to list new tags needs to be added to DB",
                 "consumes": [
                     "application/json"
                 ],
@@ -1008,7 +1008,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Recipe"
+                            "$ref": "#/definitions/controller.PostRecipeRequest"
                         }
                     }
                 ],
@@ -2833,6 +2833,73 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "nutritional_values": {}
+            }
+        },
+        "controller.PostCommentRequest": {
+            "type": "object",
+            "required": [
+                "description",
+                "recipe_id",
+                "title"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "recipe_id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "controller.PostRecipeRequest": {
+            "type": "object",
+            "required": [
+                "ingredients",
+                "text",
+                "title"
+            ],
+            "properties": {
+                "category_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ingredients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Ingredient"
+                    }
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Step"
+                    }
+                },
+                "tag_ids": {
+                    "description": "Optional: Use existing tag IDs",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "tag_names": {
+                    "description": "Optional: Create/find tags by name",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "text": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
             }
         },
         "controller.RatingResponse": {

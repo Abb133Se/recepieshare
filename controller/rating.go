@@ -54,6 +54,8 @@ func PostRatingHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+
+	rating.UserID = c.GetUint("userID")
 	_, err = utils.ValidateEntityID(strconv.Itoa(int(rating.UserID)))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})

@@ -17,48 +17,48 @@ type CommentResponse struct {
 	ID      uint   `json:"id"`
 }
 
+type PostCommentRequest struct {
+	Title       string `json:"title" binding:"required"`
+	Description string `json:"description" binding:"required"`
+	RecipeID    uint   `json:"recipe_id" binding:"required"`
+}
+
 // PostCommentHandler godoc
 // @Summary      Post a new comment
 // @Description  Create a new comment linked to a recipe and user
 // @Tags         comments
 // @Accept       json
 // @Produce      json
-// @Param        comment  body      model.Comment  true  "Comment data"
+// @Param        comment  body      PostCommentRequest  true  "Comment data"
 // @Success      200      {object}  controller.CommentResponse
 // @Failure      400      {object}  controller.ErrorResponse
 // @Failure      404      {object}  controller.ErrorResponse
 // @Failure      500      {object}  controller.ErrorResponse
 // @Router       /comment [post]
 func PostCommentHandler(c *gin.Context) {
-	var comment model.Comment
+	var req PostCommentRequest
 	var recipe model.Recipe
 	var user model.User
 
-	err := c.BindJSON(&comment)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "bad request"})
 		return
 	}
 
-	if comment.ID != 0 {
-		if _, err := utils.ValidateEntityID(strconv.Itoa(int(comment.ID))); err != nil {
+	userID := c.GetUint("userID")
+	if userID != 0 {
+		if _, err := utils.ValidateEntityID(strconv.Itoa(int(userID))); err != nil {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
 	}
 
-	if comment.RecipeID != 0 {
-		if _, err := utils.ValidateEntityID(strconv.Itoa(int(comment.RecipeID))); err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
-			return
-		}
-	}
-
-	if comment.UserID != 0 {
-		if _, err := utils.ValidateEntityID(strconv.Itoa(int(comment.UserID))); err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
-			return
-		}
+	comment := model.Comment{
+		Title:       req.Title,
+		Description: req.Description,
+		RecipeID:    req.RecipeID,
+		UserID:      userID,
 	}
 
 	db, err := internal.GetGormInstance()
@@ -66,7 +66,6 @@ func PostCommentHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
 		return
 	}
-
 	err = db.First(&recipe, comment.RecipeID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
