@@ -113,6 +113,19 @@ definitions:
     properties:
       nutritional_values: {}
     type: object
+  controller.PostCommentRequest:
+    properties:
+      description:
+        type: string
+      recipe_id:
+        type: integer
+      title:
+        type: string
+    required:
+    - description
+    - recipe_id
+    - title
+    type: object
   controller.PostRecipeRequest:
     properties:
       category_ids:
@@ -626,7 +639,7 @@ paths:
         name: comment
         required: true
         schema:
-          $ref: '#/definitions/model.Comment'
+          $ref: '#/definitions/controller.PostCommentRequest'
       produces:
       - application/json
       responses:

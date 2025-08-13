@@ -278,7 +278,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Comment"
+                            "$ref": "#/definitions/controller.PostCommentRequest"
                         }
                     }
                 ],
@@ -2833,6 +2833,25 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "nutritional_values": {}
+            }
+        },
+        "controller.PostCommentRequest": {
+            "type": "object",
+            "required": [
+                "description",
+                "recipe_id",
+                "title"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "recipe_id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
             }
         },
         "controller.PostRecipeRequest": {
