@@ -33,7 +33,8 @@ type PostRecipeRequest struct {
 	Title       string             `json:"title" binding:"required"`
 	Text        string             `json:"text" binding:"required"`
 	Ingredients []model.Ingredient `json:"ingredients" binding:"required"`
-	TagIDs      []uint             `json:"tag_ids"`
+	TagIDs      []uint             `json:"tag_ids"`   // Optional: Use existing tag IDs
+	TagNames    []string           `json:"tag_names"` // Optional: Create/find tags by name
 	CategoryIDs []uint             `json:"category_ids"`
 	Steps       []model.Step       `json:"steps"`
 }
@@ -138,11 +139,11 @@ func GetRecipeHandler(c *gin.Context) {
 
 // PostRecipeHandler godoc
 // @Summary      Create a new recipe
-// @Description  Create a new recipe with ingredients, tags, categories, and steps
+// @Description  Create a new recipe with ingredients, tags (by IDs or names), categories, and steps. The "tag_id" field is used to list already existing tags and "tag_names" is used to list new tags needs to be added to DB
 // @Tags         recipes
 // @Accept       json
 // @Produce      json
-// @Param        recipe  body      model.Recipe  true  "Recipe data"
+// @Param        recipe  body      PostRecipeRequest  true  "Recipe data"
 // @Success      201     {object}  RecipeResponse
 // @Failure      400     {object}  ErrorResponse
 // @Failure      500     {object}  ErrorResponse
@@ -177,10 +178,32 @@ func PostRecipeHandler(c *gin.Context) {
 	}
 
 	var tags []model.Tag
+
 	if len(req.TagIDs) > 0 {
-		if err := db.Find(&tags, req.TagIDs).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load tags"})
+		var existingByIDs []model.Tag
+		if err := db.Find(&existingByIDs, req.TagIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load tags by IDs"})
 			return
+		}
+		tags = append(tags, existingByIDs...)
+	}
+
+	if len(req.TagNames) > 0 {
+		for _, tagName := range req.TagNames {
+			var tag model.Tag
+			if err := db.Where("name = ?", tagName).First(&tag).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					tag = model.Tag{Name: tagName}
+					if err := db.Create(&tag).Error; err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create new tag"})
+						return
+					}
+				} else {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tag"})
+					return
+				}
+			}
+			tags = append(tags, tag)
 		}
 	}
 
@@ -412,7 +435,12 @@ func GetAllRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	if err = db.Find(&recipes).Limit(limit).Offset(offset).Error; err != nil {
+	if err = db.
+		Preload("Tags").
+		Preload("Categories").
+		Limit(limit).
+		Offset(offset).
+		Find(&recipes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipes"})
 		return
 	}

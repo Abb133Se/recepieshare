@@ -113,6 +113,39 @@ definitions:
     properties:
       nutritional_values: {}
     type: object
+  controller.PostRecipeRequest:
+    properties:
+      category_ids:
+        items:
+          type: integer
+        type: array
+      ingredients:
+        items:
+          $ref: '#/definitions/model.Ingredient'
+        type: array
+      steps:
+        items:
+          $ref: '#/definitions/model.Step'
+        type: array
+      tag_ids:
+        description: 'Optional: Use existing tag IDs'
+        items:
+          type: integer
+        type: array
+      tag_names:
+        description: 'Optional: Create/find tags by name'
+        items:
+          type: string
+        type: array
+      text:
+        type: string
+      title:
+        type: string
+    required:
+    - ingredients
+    - text
+    - title
+    type: object
   controller.RatingResponse:
     properties:
       id:
@@ -1068,14 +1101,16 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new recipe with ingredients, tags, categories, and steps
+      description: Create a new recipe with ingredients, tags (by IDs or names), categories,
+        and steps. The "tag_id" field is used to list already existing tags and "tag_names"
+        is used to list new tags needs to be added to DB
       parameters:
       - description: Recipe data
         in: body
         name: recipe
         required: true
         schema:
-          $ref: '#/definitions/model.Recipe'
+          $ref: '#/definitions/controller.PostRecipeRequest'
       produces:
       - application/json
       responses:
