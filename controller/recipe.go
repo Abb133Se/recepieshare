@@ -66,9 +66,14 @@ type IngredientsResponse struct {
 }
 
 type CommentsResponse struct {
-	Message string          `json:"message"`
-	Data    []model.Comment `json:"data"`
-	Count   int64           `json:"count"`
+	Message string                `json:"message"`
+	Data    []CommentWithUserName `json:"data"`
+	Count   int64                 `json:"count"`
+}
+
+type CommentWithUserName struct {
+	model.Comment
+	CommenterName string `json:"user_name"`
 }
 
 type TagsResponse struct {
@@ -417,9 +422,24 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 		return
 	}
 
+	var responseComments []CommentWithUserName
+	for _, comment := range comments {
+		var user model.User
+		var commenterName string
+		if comment.UserID != 0 {
+			if err := db.First(&user, comment.UserID).Error; err == nil {
+				commenterName = user.Name
+			}
+		}
+		responseComments = append(responseComments, CommentWithUserName{
+			Comment:       comment,
+			CommenterName: commenterName,
+		})
+	}
+
 	c.JSON(http.StatusOK, CommentsResponse{
 		Message: "comments retrieved successfully",
-		Data:    comments,
+		Data:    responseComments,
 		Count:   commentCount,
 	})
 

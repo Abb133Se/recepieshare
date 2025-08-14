@@ -33,13 +33,37 @@ definitions:
       message:
         type: string
     type: object
+  controller.CommentWithUserName:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      likes:
+        type: integer
+      recipe_id:
+        type: integer
+      title:
+        type: string
+      updatedAt:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    required:
+    - description
+    - title
+    type: object
   controller.CommentsResponse:
     properties:
       count:
         type: integer
       data:
         items:
-          $ref: '#/definitions/model.Comment'
+          $ref: '#/definitions/controller.CommentWithUserName'
         type: array
       message:
         type: string
@@ -188,6 +212,10 @@ definitions:
       images:
         items:
           type: integer
+        type: array
+      ingredients:
+        items:
+          $ref: '#/definitions/model.Ingredient'
         type: array
       steps:
         items:
