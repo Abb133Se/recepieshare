@@ -166,21 +166,45 @@ definitions:
       message:
         type: string
     type: object
-  controller.RecipeListResponse:
+  controller.RecipeListWithImagesResponse:
     properties:
       data:
         items:
-          $ref: '#/definitions/model.Recipe'
+          $ref: '#/definitions/controller.RecipeWithImageIDs'
         type: array
       message:
         type: string
     type: object
-  controller.RecipeResponse:
+  controller.RecipeWithImageIDs:
     properties:
-      data:
-        $ref: '#/definitions/model.Recipe'
-      message:
+      categories:
+        items:
+          $ref: '#/definitions/model.Category'
+        type: array
+      created_at:
         type: string
+      id:
+        type: integer
+      images:
+        items:
+          type: integer
+        type: array
+      steps:
+        items:
+          $ref: '#/definitions/model.Step'
+        type: array
+      tags:
+        items:
+          $ref: '#/definitions/model.Tag'
+        type: array
+      text:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
     type: object
   controller.ResetPasswordRequest:
     properties:
@@ -1115,8 +1139,7 @@ paths:
       consumes:
       - application/json
       description: Create a new recipe with ingredients, tags (by IDs or names), categories,
-        and steps. The "tag_id" field is used to list already existing tags and "tag_names"
-        is used to list new tags needs to be added to DB
+        steps, and returns the new recipe including image IDs
       parameters:
       - description: Recipe data
         in: body
@@ -1130,7 +1153,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/controller.RecipeResponse'
+            $ref: '#/definitions/controller.RecipeWithImageIDs'
         "400":
           description: Bad Request
           schema:
@@ -1173,7 +1196,7 @@ paths:
       - recipes
     get:
       description: Get detailed recipe info including ingredients, comments, tags,
-        categories, and steps
+        categories, steps, and image IDs
       parameters:
       - description: Recipe ID
         in: path
@@ -1184,7 +1207,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controller.RecipeResponse'
+            $ref: '#/definitions/controller.RecipeWithImageIDs'
         "400":
           description: Bad Request
           schema:
@@ -1632,7 +1655,8 @@ paths:
       - recipes
   /recipe/list:
     get:
-      description: Retrieve recipes with pagination, includes comments and ingredients
+      description: Retrieve recipes with pagination, including tags, categories, steps,
+        and image IDs
       parameters:
       - description: Limit number of recipes
         in: query
@@ -1646,7 +1670,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controller.RecipeListResponse'
+            $ref: '#/definitions/controller.RecipeListWithImagesResponse'
         "400":
           description: Bad Request
           schema:
@@ -1688,7 +1712,8 @@ paths:
       - recipes
   /recipes/search:
     get:
-      description: Retrieves a list of recipes matching the given filters.
+      description: Retrieve a list of recipes matching the given filters, including
+        tags, categories, steps, and image IDs
       parameters:
       - description: Filter by recipe title (partial match)
         in: query
@@ -1722,15 +1747,11 @@ paths:
         in: query
         name: offset
         type: integer
-      produces:
-      - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controller.RecipeResponse'
-            type: array
+            $ref: '#/definitions/controller.RecipeListWithImagesResponse'
         "400":
           description: Bad Request
           schema:
