@@ -148,16 +148,17 @@ func GetRecipeHandler(c *gin.Context) {
 	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
 
 	resp := RecipeWithImageIDs{
-		ID:         recipe.ID,
-		Title:      recipe.Title,
-		Text:       recipe.Text,
-		UserID:     recipe.UserID,
-		Tags:       recipe.Tags,
-		Categories: recipe.Categories,
-		Steps:      recipe.Steps,
-		Images:     imageIDs,
-		CreatedAt:  recipe.CreatedAt,
-		UpdatedAt:  recipe.UpdatedAt,
+		ID:          recipe.ID,
+		Title:       recipe.Title,
+		Text:        recipe.Text,
+		UserID:      recipe.UserID,
+		Ingredients: recipe.Ingredients,
+		Tags:        recipe.Tags,
+		Categories:  recipe.Categories,
+		Steps:       recipe.Steps,
+		Images:      imageIDs,
+		CreatedAt:   recipe.CreatedAt,
+		UpdatedAt:   recipe.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, resp)
