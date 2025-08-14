@@ -162,15 +162,23 @@ func DeleteImage(entityType string, entityID, imageID uint, backend internal.Sto
 	return nil
 }
 
-func GetImagesForEntity(entityType string, entityID uint) ([]model.Image, error) {
+func GetImageIDsForEntity(entityType string, entityID uint) ([]uint, error) {
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		return nil, fmt.Errorf("database connection error: %w", err)
 	}
 
 	var images []model.Image
-	err = db.Where("entity_type = ? AND entity_id = ?", entityType, entityID).Find(&images).Error
-	return images, err
+	if err := db.Where("entity_type = ? AND entity_id = ?", entityType, entityID).Find(&images).Error; err != nil {
+		return nil, err
+	}
+
+	ids := make([]uint, len(images))
+	for i, img := range images {
+		ids[i] = img.ID
+	}
+
+	return ids, nil
 }
 
 func DeleteImagesForEntity(entityType string, entityID uint, backend internal.StorageBackend) error {

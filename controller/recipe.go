@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
+	"github.com/Abb133Se/recepieshare/service"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -81,20 +83,37 @@ type NutritionResponse struct {
 	NutritionalValues interface{} `json:"nutritional_values"`
 }
 
+type RecipeWithImageIDs struct {
+	ID         uint             `json:"id"`
+	Title      string           `json:"title"`
+	Text       string           `json:"text"`
+	UserID     uint             `json:"user_id"`
+	Tags       []model.Tag      `json:"tags"`
+	Categories []model.Category `json:"categories"`
+	Steps      []model.Step     `json:"steps"`
+	Images     []uint           `json:"images"`
+	CreatedAt  time.Time        `json:"created_at"`
+	UpdatedAt  time.Time        `json:"updated_at"`
+}
+
+type RecipeListWithImagesResponse struct {
+	Message string               `json:"message"`
+	Data    []RecipeWithImageIDs `json:"data"`
+}
+
 var API_KEY = "YTAMecQ6C06ClaR/HmS26g==OUlc0LkiJgLyFjhv"
 
 // GetRecipeHandler godoc
 // @Summary      Get recipe by ID
-// @Description  Get detailed recipe info including ingredients, comments, tags, categories, and steps
+// @Description  Get detailed recipe info including ingredients, comments, tags, categories, steps, and image IDs
 // @Tags         recipes
 // @Param        id   path      int  true  "Recipe ID"
-// @Success      200  {object}  RecipeResponse
+// @Success      200  {object}  RecipeWithImageIDs
 // @Failure      400  {object}  ErrorResponse
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /recipe/{id} [get]
 func GetRecipeHandler(c *gin.Context) {
-
 	var recipe model.Recipe
 
 	validID, err := utils.ValidateEntityID(c.Param("id"))
@@ -105,9 +124,7 @@ func GetRecipeHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to connect to db",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
 		return
 	}
 
@@ -120,31 +137,39 @@ func GetRecipeHandler(c *gin.Context) {
 		First(&recipe, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "recipe not found",
-			})
+			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to fetch recipe",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipe"})
 		return
 	}
 
-	c.JSON(http.StatusOK, RecipeResponse{
-		Message: "successful",
-		Data:    recipe,
-	})
+	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
+
+	resp := RecipeWithImageIDs{
+		ID:         recipe.ID,
+		Title:      recipe.Title,
+		Text:       recipe.Text,
+		UserID:     recipe.UserID,
+		Tags:       recipe.Tags,
+		Categories: recipe.Categories,
+		Steps:      recipe.Steps,
+		Images:     imageIDs,
+		CreatedAt:  recipe.CreatedAt,
+		UpdatedAt:  recipe.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // PostRecipeHandler godoc
 // @Summary      Create a new recipe
-// @Description  Create a new recipe with ingredients, tags (by IDs or names), categories, and steps. The "tag_id" field is used to list already existing tags and "tag_names" is used to list new tags needs to be added to DB
+// @Description  Create a new recipe with ingredients, tags (by IDs or names), categories, steps, and returns the new recipe including image IDs
 // @Tags         recipes
 // @Accept       json
 // @Produce      json
 // @Param        recipe  body      PostRecipeRequest  true  "Recipe data"
-// @Success      201     {object}  RecipeResponse
+// @Success      201     {object}  RecipeWithImageIDs
 // @Failure      400     {object}  ErrorResponse
 // @Failure      500     {object}  ErrorResponse
 // @Router       /recipe [post]
@@ -169,50 +194,28 @@ func PostRecipeHandler(c *gin.Context) {
 
 	var user model.User
 	if err := db.First(&user, userID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "user not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user not found"})
 		return
 	}
 
 	var tags []model.Tag
-
 	if len(req.TagIDs) > 0 {
-		var existingByIDs []model.Tag
-		if err := db.Find(&existingByIDs, req.TagIDs).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load tags by IDs"})
-			return
-		}
-		tags = append(tags, existingByIDs...)
+		db.Find(&tags, req.TagIDs)
 	}
-
-	if len(req.TagNames) > 0 {
-		for _, tagName := range req.TagNames {
-			var tag model.Tag
-			if err := db.Where("name = ?", tagName).First(&tag).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					tag = model.Tag{Name: tagName}
-					if err := db.Create(&tag).Error; err != nil {
-						c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create new tag"})
-						return
-					}
-				} else {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tag"})
-					return
-				}
+	for _, name := range req.TagNames {
+		var tag model.Tag
+		if err := db.Where("name = ?", name).First(&tag).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				tag = model.Tag{Name: name}
+				db.Create(&tag)
 			}
-			tags = append(tags, tag)
 		}
+		tags = append(tags, tag)
 	}
 
 	var categories []model.Category
 	if len(req.CategoryIDs) > 0 {
-		if err := db.Find(&categories, req.CategoryIDs).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load categories"})
-			return
-		}
+		db.Find(&categories, req.CategoryIDs)
 	}
 
 	recipe := model.Recipe{
@@ -230,10 +233,22 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, RecipeResponse{
-		Message: "recipe created successfully",
-		Data:    recipe,
-	})
+	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
+
+	resp := RecipeWithImageIDs{
+		ID:         recipe.ID,
+		Title:      recipe.Title,
+		Text:       recipe.Text,
+		UserID:     recipe.UserID,
+		Tags:       recipe.Tags,
+		Categories: recipe.Categories,
+		Steps:      recipe.Steps,
+		Images:     imageIDs,
+		CreatedAt:  recipe.CreatedAt,
+		UpdatedAt:  recipe.UpdatedAt,
+	}
+
+	c.JSON(http.StatusCreated, resp)
 }
 
 // DeleteRecipeHandler godoc
@@ -409,25 +424,22 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 
 // GetAllRecipesHandler godoc
 // @Summary      Get paginated list of recipes
-// @Description  Retrieve recipes with pagination, includes comments and ingredients
+// @Description  Retrieve recipes with pagination, including tags, categories, steps, and image IDs
 // @Tags         recipes
 // @Param        limit   query  int  false "Limit number of recipes"
 // @Param        offset  query  int  false "Offset for pagination"
-// @Success      200     {object}  RecipeListResponse
+// @Success      200     {object}  RecipeListWithImagesResponse
 // @Failure      400     {object}  ErrorResponse
 // @Failure      500     {object}  ErrorResponse
 // @Router       /recipe/list [get]
 func GetAllRecipesHandler(c *gin.Context) {
-
 	var recipes []model.Recipe
 
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	limit := validLimit
-	offset := validOffset
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -435,21 +447,33 @@ func GetAllRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	if err = db.
-		Preload("Tags").
-		Preload("Categories").
-		Limit(limit).
-		Offset(offset).
-		Find(&recipes).Error; err != nil {
+	if err := db.Preload("Tags").Preload("Categories").
+		Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipes"})
 		return
 	}
 
-	c.JSON(http.StatusOK, RecipeListResponse{
-		Message: "recipes retrieved successfully",
-		Data:    recipes,
-	})
+	var recipesWithImages []RecipeWithImageIDs
+	for _, r := range recipes {
+		imageIDs, _ := service.GetImageIDsForEntity("recipe", r.ID)
+		recipesWithImages = append(recipesWithImages, RecipeWithImageIDs{
+			ID:         r.ID,
+			Title:      r.Title,
+			Text:       r.Text,
+			UserID:     r.UserID,
+			Tags:       r.Tags,
+			Categories: r.Categories,
+			Steps:      r.Steps,
+			Images:     imageIDs,
+			CreatedAt:  r.CreatedAt,
+			UpdatedAt:  r.UpdatedAt,
+		})
+	}
 
+	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
+		Message: "recipes retrieved successfully",
+		Data:    recipesWithImages,
+	})
 }
 
 // PutRecipeUpdateHandler godoc
@@ -907,9 +931,8 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 
 // SearchRecipesHandler godoc
 // @Summary      Search recipes
-// @Description  Retrieves a list of recipes matching the given filters.
+// @Description  Retrieve a list of recipes matching the given filters, including tags, categories, steps, and image IDs
 // @Tags         recipes
-// @Produce      json
 // @Param        title         query   string  false  "Filter by recipe title (partial match)"
 // @Param        ingredient    query   string  false  "Filter by ingredient name"
 // @Param        tag_ids       query   string  false  "Comma-separated list of tag IDs"
@@ -918,7 +941,7 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 // @Param        sort          query   string  false  "Sort field (e.g., 'title', 'created_at')"
 // @Param        limit         query   int     false  "Max number of recipes to return"
 // @Param        offset        query   int     false  "Number of recipes to skip"
-// @Success      200  {array}   RecipeResponse
+// @Success      200  {object}  RecipeListWithImagesResponse
 // @Failure      400  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /recipes/search [get]
@@ -943,9 +966,7 @@ func SearchRecipesHandler(c *gin.Context) {
 		Preload("User")
 
 	query = utils.ApplyRecipeFilters(query, params)
-
-	sortParam := c.Query("sort")
-	query = utils.ApplyRecipeSorting(query, sortParam)
+	query = utils.ApplyRecipeSorting(query, c.Query("sort"))
 
 	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
 	if err != nil {
@@ -953,18 +974,31 @@ func SearchRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	query = query.Limit(limit).Offset(offset)
-
 	var recipes []model.Recipe
-	if err := query.Find(&recipes).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusOK, gin.H{"data": []model.Recipe{}})
-			return
-		}
+	if err := query.Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, RecipeListResponse{Data: recipes})
+	var recipesWithImages []RecipeWithImageIDs
+	for _, r := range recipes {
+		imageIDs, _ := service.GetImageIDsForEntity("recipe", r.ID)
+		recipesWithImages = append(recipesWithImages, RecipeWithImageIDs{
+			ID:         r.ID,
+			Title:      r.Title,
+			Text:       r.Text,
+			UserID:     r.UserID,
+			Tags:       r.Tags,
+			Categories: r.Categories,
+			Steps:      r.Steps,
+			Images:     imageIDs,
+			CreatedAt:  r.CreatedAt,
+			UpdatedAt:  r.UpdatedAt,
+		})
+	}
 
+	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
+		Message: "recipes retrieved successfully",
+		Data:    recipesWithImages,
+	})
 }

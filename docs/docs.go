@@ -990,7 +990,7 @@ const docTemplate = `{
         },
         "/recipe": {
             "post": {
-                "description": "Create a new recipe with ingredients, tags (by IDs or names), categories, and steps. The \"tag_id\" field is used to list already existing tags and \"tag_names\" is used to list new tags needs to be added to DB",
+                "description": "Create a new recipe with ingredients, tags (by IDs or names), categories, steps, and returns the new recipe including image IDs",
                 "consumes": [
                     "application/json"
                 ],
@@ -1016,7 +1016,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/controller.RecipeResponse"
+                            "$ref": "#/definitions/controller.RecipeWithImageIDs"
                         }
                     },
                     "400": {
@@ -1036,7 +1036,7 @@ const docTemplate = `{
         },
         "/recipe/list": {
             "get": {
-                "description": "Retrieve recipes with pagination, includes comments and ingredients",
+                "description": "Retrieve recipes with pagination, including tags, categories, steps, and image IDs",
                 "tags": [
                     "recipes"
                 ],
@@ -1059,7 +1059,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.RecipeListResponse"
+                            "$ref": "#/definitions/controller.RecipeListWithImagesResponse"
                         }
                     },
                     "400": {
@@ -1079,7 +1079,7 @@ const docTemplate = `{
         },
         "/recipe/{id}": {
             "get": {
-                "description": "Get detailed recipe info including ingredients, comments, tags, categories, and steps",
+                "description": "Get detailed recipe info including ingredients, comments, tags, categories, steps, and image IDs",
                 "tags": [
                     "recipes"
                 ],
@@ -1097,7 +1097,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.RecipeResponse"
+                            "$ref": "#/definitions/controller.RecipeWithImageIDs"
                         }
                     },
                     "400": {
@@ -1852,10 +1852,7 @@ const docTemplate = `{
         },
         "/recipes/search": {
             "get": {
-                "description": "Retrieves a list of recipes matching the given filters.",
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Retrieve a list of recipes matching the given filters, including tags, categories, steps, and image IDs",
                 "tags": [
                     "recipes"
                 ],
@@ -1914,10 +1911,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controller.RecipeResponse"
-                            }
+                            "$ref": "#/definitions/controller.RecipeListWithImagesResponse"
                         }
                     },
                     "400": {
@@ -2913,13 +2907,13 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.RecipeListResponse": {
+        "controller.RecipeListWithImagesResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Recipe"
+                        "$ref": "#/definitions/controller.RecipeWithImageIDs"
                     }
                 },
                 "message": {
@@ -2927,14 +2921,50 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.RecipeResponse": {
+        "controller.RecipeWithImageIDs": {
             "type": "object",
             "properties": {
-                "data": {
-                    "$ref": "#/definitions/model.Recipe"
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Category"
+                    }
                 },
-                "message": {
+                "created_at": {
                     "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Step"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                },
+                "text": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
