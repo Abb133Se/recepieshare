@@ -211,6 +211,8 @@ definitions:
     type: object
   controller.RecipeListWithImagesResponse:
     properties:
+      count:
+        type: integer
       data:
         items:
           $ref: '#/definitions/controller.RecipeWithImageIDs'
@@ -318,6 +320,8 @@ definitions:
     type: object
   controller.UserFavoritesResponse:
     properties:
+      count:
+        type: integer
       data:
         items:
           $ref: '#/definitions/model.Favorite'
@@ -344,6 +348,8 @@ definitions:
     type: object
   controller.UserRatingsResponse:
     properties:
+      count:
+        type: integer
       data:
         items:
           $ref: '#/definitions/model.Rating'
@@ -353,6 +359,8 @@ definitions:
     type: object
   controller.UserRecipesResponse:
     properties:
+      count:
+        type: integer
       data:
         items:
           $ref: '#/definitions/model.Recipe'
@@ -545,8 +553,8 @@ info:
 paths:
   /categories:
     get:
-      description: Retrieve paginated list of categories optionally sorted by name
-        or creation date
+      description: Retrieve a paginated list of categories with total count, optionally
+        sorted by name or creation date
       parameters:
       - default: 10
         description: Limit number of categories returned
@@ -1430,25 +1438,28 @@ paths:
       - recipes
   /recipe/{id}/comments:
     get:
-      description: Retrieve comments with pagination and sorting for a recipe
+      description: Retrieve a paginated list of comments for a specific recipe with
+        total count, optionally sorted by likes or date
       parameters:
       - description: Recipe ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Limit number of comments
+      - description: Limit number of comments returned
         in: query
         name: limit
         type: integer
-      - description: Offset for pagination
+      - description: Number of comments to skip
         in: query
         name: offset
         type: integer
-      - description: Sort order (e.g., date_desc)
+      - description: 'Sort order: likes_desc, likes_asc, date_asc, date_desc'
         in: query
         name: sort
         type: string
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
@@ -1466,9 +1477,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get paginated comments for a recipe
+      summary: Get all comments for a recipe with pagination and sorting
       tags:
-      - recipes
+      - comments
   /recipe/{id}/image/{imageId}:
     delete:
       description: Deletes an image associated with a recipe
@@ -1736,17 +1747,45 @@ paths:
       - recipes
   /recipe/list:
     get:
-      description: Retrieve recipes with pagination, including tags, categories, steps,
-        and image IDs
+      description: Retrieve a paginated list of recipes with total count, optionally
+        filtered by title, ingredient, tags, categories, user, and sorted by title,
+        creation date, rating, or favorites
       parameters:
-      - description: Limit number of recipes
+      - description: Limit number of recipes returned
         in: query
         name: limit
         type: integer
-      - description: Offset for pagination
+      - description: Number of recipes to skip
         in: query
         name: offset
         type: integer
+      - description: 'Sort order: title_asc, title_desc, created_asc, created_desc,
+          rating_desc, favorites_desc'
+        in: query
+        name: sort
+        type: string
+      - description: Filter by recipe title (partial match)
+        in: query
+        name: title
+        type: string
+      - description: Filter by ingredient name (partial match)
+        in: query
+        name: ingredient
+        type: string
+      - description: Filter by tag IDs (comma-separated)
+        in: query
+        name: tag_ids
+        type: string
+      - description: Filter by category IDs (comma-separated)
+        in: query
+        name: category_ids
+        type: string
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: integer
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
@@ -1760,7 +1799,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get paginated list of recipes
+      summary: Get all recipes with pagination, filtering, and sorting
       tags:
       - recipes
   /recipes/most-popular:
@@ -1793,34 +1832,35 @@ paths:
       - recipes
   /recipes/search:
     get:
-      description: Retrieve a list of recipes matching the given filters, including
-        tags, categories, steps, and image IDs
+      description: Search for recipes using various filters and retrieve a paginated
+        list with total count, optionally sorted
       parameters:
       - description: Filter by recipe title (partial match)
         in: query
         name: title
         type: string
-      - description: Filter by ingredient name
+      - description: Filter by ingredient name (partial match)
         in: query
         name: ingredient
         type: string
-      - description: Comma-separated list of tag IDs
+      - description: Filter by tag IDs (comma-separated)
         in: query
         name: tag_ids
         type: string
-      - description: Comma-separated list of category IDs
+      - description: Filter by category IDs (comma-separated)
         in: query
         name: category_ids
         type: string
-      - description: Filter by recipe author's user ID
+      - description: Filter by user ID
         in: query
         name: user_id
         type: string
-      - description: Sort field (e.g., 'title', 'created_at')
+      - description: 'Sort order: title_asc, title_desc, created_asc, created_desc,
+          rating_desc, favorites_desc'
         in: query
         name: sort
         type: string
-      - description: Max number of recipes to return
+      - description: Limit number of recipes returned
         in: query
         name: limit
         type: integer
@@ -1828,6 +1868,8 @@ paths:
         in: query
         name: offset
         type: integer
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
@@ -1841,7 +1883,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Search recipes
+      summary: Search recipes with pagination, filtering, and sorting
       tags:
       - recipes
   /recipes/top-rated:
@@ -2069,36 +2111,45 @@ paths:
       - tags
   /tags:
     get:
-      description: Retrieves all tags with their associated recipes
+      description: Retrieve a paginated list of tags with total count, optionally
+        sorted by name or creation date
       parameters:
-      - description: Limit number of recipes returned
+      - default: 10
+        description: Limit number of tags returned
         in: query
         name: limit
         type: integer
-      - description: Offset for pagination
+      - default: 0
+        description: Number of tags to skip
         in: query
         name: offset
         type: integer
+      - description: 'Sort order: name_asc, name_desc, created_asc, created_desc'
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controller.TagResponse'
-            type: array
+            $ref: '#/definitions/controller.TagsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get all tags
+      summary: Get all tags with pagination and sorting
       tags:
       - tags
   /user/{id}/favorites:
     get:
-      description: Retrieves favorite recipes of the specified user, supports pagination
-        via limit and offset
+      description: Retrieve a paginated list of favorite recipes for a specific user
+        with total count
       parameters:
       - description: User ID
         in: path
@@ -2109,7 +2160,7 @@ paths:
         in: query
         name: limit
         type: integer
-      - description: Offset for pagination
+      - description: Number of favorites to skip
         in: query
         name: offset
         type: integer
@@ -2124,15 +2175,11 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get favorite recipes of a user
+      summary: Get user's favorites with pagination
       tags:
       - users
   /user/{id}/profile-image:
@@ -2245,8 +2292,8 @@ paths:
       - images
   /user/{id}/ratings:
     get:
-      description: Retrieves ratings provided by the specified user, supports pagination
-        via limit and offset
+      description: Retrieve a paginated list of ratings by a specific user with total
+        count
       parameters:
       - description: User ID
         in: path
@@ -2257,7 +2304,7 @@ paths:
         in: query
         name: limit
         type: integer
-      - description: Offset for pagination
+      - description: Number of ratings to skip
         in: query
         name: offset
         type: integer
@@ -2272,21 +2319,17 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get ratings given by a user
+      summary: Get user's ratings with pagination
       tags:
       - users
   /user/{id}/recipes:
     get:
-      description: Retrieves recipes authored by the specified user, supports pagination
-        via limit and offset query params
+      description: Retrieve a paginated list of recipes for a specific user with total
+        count
       parameters:
       - description: User ID
         in: path
@@ -2297,7 +2340,7 @@ paths:
         in: query
         name: limit
         type: integer
-      - description: Offset for pagination
+      - description: Number of recipes to skip
         in: query
         name: offset
         type: integer
@@ -2312,15 +2355,11 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get recipes created by a user
+      summary: Get user's recipes with pagination
       tags:
       - users
 swagger: "2.0"

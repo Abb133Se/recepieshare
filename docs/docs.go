@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/categories": {
             "get": {
-                "description": "Retrieve paginated list of categories optionally sorted by name or creation date",
+                "description": "Retrieve a paginated list of categories with total count, optionally sorted by name or creation date",
                 "produces": [
                     "application/json"
                 ],
@@ -1081,22 +1081,61 @@ const docTemplate = `{
         },
         "/recipe/list": {
             "get": {
-                "description": "Retrieve recipes with pagination, including tags, categories, steps, and image IDs",
+                "description": "Retrieve a paginated list of recipes with total count, optionally filtered by title, ingredient, tags, categories, user, and sorted by title, creation date, rating, or favorites",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "recipes"
                 ],
-                "summary": "Get paginated list of recipes",
+                "summary": "Get all recipes with pagination, filtering, and sorting",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Limit number of recipes",
+                        "description": "Limit number of recipes returned",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset for pagination",
+                        "description": "Number of recipes to skip",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: title_asc, title_desc, created_asc, created_desc, rating_desc, favorites_desc",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by recipe title (partial match)",
+                        "name": "title",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by ingredient name (partial match)",
+                        "name": "ingredient",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by tag IDs (comma-separated)",
+                        "name": "tag_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by category IDs (comma-separated)",
+                        "name": "category_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by user ID",
+                        "name": "user_id",
                         "in": "query"
                     }
                 ],
@@ -1397,11 +1436,14 @@ const docTemplate = `{
         },
         "/recipe/{id}/comments": {
             "get": {
-                "description": "Retrieve comments with pagination and sorting for a recipe",
-                "tags": [
-                    "recipes"
+                "description": "Retrieve a paginated list of comments for a specific recipe with total count, optionally sorted by likes or date",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Get paginated comments for a recipe",
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Get all comments for a recipe with pagination and sorting",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1412,19 +1454,19 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Limit number of comments",
+                        "description": "Limit number of comments returned",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset for pagination",
+                        "description": "Number of comments to skip",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sort order (e.g., date_desc)",
+                        "description": "Sort order: likes_desc, likes_asc, date_asc, date_desc",
                         "name": "sort",
                         "in": "query"
                     }
@@ -1897,11 +1939,14 @@ const docTemplate = `{
         },
         "/recipes/search": {
             "get": {
-                "description": "Retrieve a list of recipes matching the given filters, including tags, categories, steps, and image IDs",
+                "description": "Search for recipes using various filters and retrieve a paginated list with total count, optionally sorted",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "recipes"
                 ],
-                "summary": "Search recipes",
+                "summary": "Search recipes with pagination, filtering, and sorting",
                 "parameters": [
                     {
                         "type": "string",
@@ -1911,37 +1956,37 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by ingredient name",
+                        "description": "Filter by ingredient name (partial match)",
                         "name": "ingredient",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated list of tag IDs",
+                        "description": "Filter by tag IDs (comma-separated)",
                         "name": "tag_ids",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated list of category IDs",
+                        "description": "Filter by category IDs (comma-separated)",
                         "name": "category_ids",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter by recipe author's user ID",
+                        "description": "Filter by user ID",
                         "name": "user_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sort field (e.g., 'title', 'created_at')",
+                        "description": "Sort order: title_asc, title_desc, created_asc, created_desc, rating_desc, favorites_desc",
                         "name": "sort",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Max number of recipes to return",
+                        "description": "Limit number of recipes returned",
                         "name": "limit",
                         "in": "query"
                     },
@@ -2315,25 +2360,33 @@ const docTemplate = `{
         },
         "/tags": {
             "get": {
-                "description": "Retrieves all tags with their associated recipes",
+                "description": "Retrieve a paginated list of tags with total count, optionally sorted by name or creation date",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "tags"
                 ],
-                "summary": "Get all tags",
+                "summary": "Get all tags with pagination and sorting",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Limit number of recipes returned",
+                        "default": 10,
+                        "description": "Limit number of tags returned",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset for pagination",
+                        "default": 0,
+                        "description": "Number of tags to skip",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: name_asc, name_desc, created_asc, created_desc",
+                        "name": "sort",
                         "in": "query"
                     }
                 ],
@@ -2341,10 +2394,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controller.TagResponse"
-                            }
+                            "$ref": "#/definitions/controller.TagsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "500": {
@@ -2358,14 +2414,14 @@ const docTemplate = `{
         },
         "/user/{id}/favorites": {
             "get": {
-                "description": "Retrieves favorite recipes of the specified user, supports pagination via limit and offset",
+                "description": "Retrieve a paginated list of favorite recipes for a specific user with total count",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Get favorite recipes of a user",
+                "summary": "Get user's favorites with pagination",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2382,7 +2438,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Offset for pagination",
+                        "description": "Number of favorites to skip",
                         "name": "offset",
                         "in": "query"
                     }
@@ -2396,12 +2452,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -2578,14 +2628,14 @@ const docTemplate = `{
         },
         "/user/{id}/ratings": {
             "get": {
-                "description": "Retrieves ratings provided by the specified user, supports pagination via limit and offset",
+                "description": "Retrieve a paginated list of ratings by a specific user with total count",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Get ratings given by a user",
+                "summary": "Get user's ratings with pagination",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2602,7 +2652,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Offset for pagination",
+                        "description": "Number of ratings to skip",
                         "name": "offset",
                         "in": "query"
                     }
@@ -2620,12 +2670,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2637,14 +2681,14 @@ const docTemplate = `{
         },
         "/user/{id}/recipes": {
             "get": {
-                "description": "Retrieves recipes authored by the specified user, supports pagination via limit and offset query params",
+                "description": "Retrieve a paginated list of recipes for a specific user with total count",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Get recipes created by a user",
+                "summary": "Get user's recipes with pagination",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2661,7 +2705,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Offset for pagination",
+                        "description": "Number of recipes to skip",
                         "name": "offset",
                         "in": "query"
                     }
@@ -2675,12 +2719,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -3019,6 +3057,9 @@ const docTemplate = `{
         "controller.RecipeListWithImagesResponse": {
             "type": "object",
             "properties": {
+                "count": {
+                    "type": "integer"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3184,6 +3225,9 @@ const docTemplate = `{
         "controller.UserFavoritesResponse": {
             "type": "object",
             "properties": {
+                "count": {
+                    "type": "integer"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3224,6 +3268,9 @@ const docTemplate = `{
         "controller.UserRatingsResponse": {
             "type": "object",
             "properties": {
+                "count": {
+                    "type": "integer"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3238,6 +3285,9 @@ const docTemplate = `{
         "controller.UserRecipesResponse": {
             "type": "object",
             "properties": {
+                "count": {
+                    "type": "integer"
+                },
                 "data": {
                     "type": "array",
                     "items": {

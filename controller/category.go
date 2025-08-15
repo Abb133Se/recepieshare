@@ -120,7 +120,7 @@ func PostCategoryHandler(c *gin.Context) {
 
 // GetAllCategoriesHandler godoc
 // @Summary      Get all categories with pagination and sorting
-// @Description  Retrieve paginated list of categories optionally sorted by name or creation date
+// @Description  Retrieve a paginated list of categories with total count, optionally sorted by name or creation date
 // @Tags         categories
 // @Produce      json
 // @Param        limit   query     int     false  "Limit number of categories returned" default(10)
