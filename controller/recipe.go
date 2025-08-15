@@ -136,6 +136,7 @@ func GetRecipeHandler(c *gin.Context) {
 		return
 	}
 
+	// Preload associations
 	err = db.Preload("Ingredients").
 		Preload("Comments").
 		Preload("User").
@@ -154,19 +155,23 @@ func GetRecipeHandler(c *gin.Context) {
 
 	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
 
-	var favoriteCount int64
-	db.Model(&model.Favorite{}).Where("recipe_id = ?", recipe.ID).Count(&favoriteCount)
+	type FavResult struct {
+		Count       int64
+		UserFavored bool
+	}
 
-	isFavorited := false
-	if userIDVal, exists := c.Get("userID"); exists {
-		if userID, ok := userIDVal.(uint); ok {
-			var favExists int64
-			db.Model(&model.Favorite{}).
-				Where("recipe_id = ? AND user_id = ?", recipe.ID, userID).
-				Count(&favExists)
-			isFavorited = favExists > 0
+	var result FavResult
+	userID := uint(0)
+	if uidVal, exists := c.Get("userID"); exists {
+		if uid, ok := uidVal.(uint); ok {
+			userID = uid
 		}
 	}
+
+	db.Model(&model.Favorite{}).
+		Select("COUNT(*) as count, SUM(CASE WHEN user_id = ? THEN 1 ELSE 0 END) > 0 as user_favored", userID).
+		Where("recipe_id = ?", recipe.ID).
+		Scan(&result)
 
 	resp := RecipeWithImageIDs{
 		ID:            recipe.ID,
@@ -178,8 +183,8 @@ func GetRecipeHandler(c *gin.Context) {
 		Categories:    recipe.Categories,
 		Steps:         recipe.Steps,
 		Images:        imageIDs,
-		FavoriteCount: favoriteCount,
-		IsFavorited:   isFavorited,
+		FavoriteCount: result.Count,
+		IsFavorited:   result.UserFavored,
 		CreatedAt:     recipe.CreatedAt,
 		UpdatedAt:     recipe.UpdatedAt,
 	}
