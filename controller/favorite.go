@@ -2,14 +2,16 @@ package controller
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
+
+type PostFavoriteRequest struct {
+	RecipeID uint `json:"recipe_id" binding:"required"`
+}
 
 type FavoriteResponse struct {
 	Message    string `json:"message"`
@@ -29,69 +31,43 @@ type FavoriteResponse struct {
 // @Failure      500       {object}  ErrorResponse
 // @Router       /favorite [post]
 func PostFavoriteHandler(c *gin.Context) {
-	var favorite model.Favorite
-	var user model.User
-	var recipe model.Recipe
-
-	err := c.BindJSON(&favorite)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+	var req PostFavoriteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "bad request"})
 		return
 	}
 
-	_, err = utils.ValidateEntityID(strconv.Itoa(int(favorite.ID)))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	_, err = utils.ValidateEntityID(strconv.Itoa(int(favorite.RecipeID)))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	favorite.UserID = c.GetUint("uerID")
-	_, err = utils.ValidateEntityID(strconv.Itoa(int(favorite.UserID)))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	userID := c.GetUint("userID")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
 		return
 	}
 
-	if err = db.First(&recipe, favorite.RecipeID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipe data"})
-		return
-	}
-	if err = db.First(&user, favorite.UserID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user data"})
+	// Check recipe exists
+	var recipe model.Recipe
+	if err := db.First(&recipe, req.RecipeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
 		return
 	}
 
-	var existingFavorite model.Favorite
-	if err := db.Where("user_id = ? AND recipe_id = ?", favorite.UserID, favorite.RecipeID).First(&existingFavorite).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "favorite already exists"})
-		return
-	} else if err != gorm.ErrRecordNotFound {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing favorite"})
+	// Check if favorite already exists
+	var existing model.Favorite
+	if err := db.Where("user_id = ? AND recipe_id = ?", userID, req.RecipeID).
+		First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, ErrorResponse{Error: "favorite already exists"})
 		return
 	}
 
-	err = db.Create(&favorite).Error
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add favorite"})
+	// Create favorite
+	favorite := model.Favorite{UserID: userID, RecipeID: req.RecipeID}
+	if err := db.Create(&favorite).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to add favorite"})
 		return
 	}
 
