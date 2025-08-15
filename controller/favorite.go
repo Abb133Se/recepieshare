@@ -19,16 +19,19 @@ type FavoriteResponse struct {
 }
 
 // PostFavoriteHandler godoc
-// @Summary      Add a favorite recipe for a user
-// @Description  Adds a favorite record linking a user and a recipe
+// @Summary      Add a favorite recipe for the authenticated user
+// @Description  Adds a favorite linking the current user (from JWT) and the specified recipe. A user can only favorite a recipe once.
 // @Tags         favorites
 // @Accept       json
 // @Produce      json
-// @Param        favorite  body      model.Favorite  true  "Favorite data"
+// @Security     BearerAuth
+// @Param        favorite  body      PostFavoriteRequest  true  "Favorite data"
 // @Success      200       {object}  FavoriteResponse
-// @Failure      400       {object}  ErrorResponse
-// @Failure      404       {object}  ErrorResponse
-// @Failure      500       {object}  ErrorResponse
+// @Failure      400       {object}  ErrorResponse "Invalid request"
+// @Failure      401       {object}  ErrorResponse "Unauthorized"
+// @Failure      404       {object}  ErrorResponse "Recipe not found"
+// @Failure      409       {object}  ErrorResponse "Favorite already exists"
+// @Failure      500       {object}  ErrorResponse "Internal server error"
 // @Router       /favorite [post]
 func PostFavoriteHandler(c *gin.Context) {
 	var req PostFavoriteRequest

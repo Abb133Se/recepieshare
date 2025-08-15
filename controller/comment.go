@@ -23,16 +23,19 @@ type PostCommentRequest struct {
 }
 
 // PostCommentHandler godoc
-// @Summary      Post a new comment
-// @Description  Create a new comment linked to a recipe and user
+// @Summary      Post a new comment on a recipe
+// @Description  Creates a new comment linked to a recipe by the current user (from JWT). Each user can comment only once per recipe.
 // @Tags         comments
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        comment  body      PostCommentRequest  true  "Comment data"
-// @Success      200      {object}  controller.CommentResponse
-// @Failure      400      {object}  controller.ErrorResponse
-// @Failure      404      {object}  controller.ErrorResponse
-// @Failure      500      {object}  controller.ErrorResponse
+// @Success      200      {object}  CommentResponse
+// @Failure      400      {object}  ErrorResponse "Invalid request"
+// @Failure      401      {object}  ErrorResponse "Unauthorized"
+// @Failure      404      {object}  ErrorResponse "Recipe not found"
+// @Failure      409      {object}  ErrorResponse "User has already commented on this recipe"
+// @Failure      500      {object}  ErrorResponse "Internal server error"
 // @Router       /comment [post]
 func PostCommentHandler(c *gin.Context) {
 	var req PostCommentRequest

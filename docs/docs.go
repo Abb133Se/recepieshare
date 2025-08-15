@@ -260,7 +260,12 @@ const docTemplate = `{
         },
         "/comment": {
             "post": {
-                "description": "Create a new comment linked to a recipe and user",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new comment linked to a recipe by the current user (from JWT). Each user can comment only once per recipe.",
                 "consumes": [
                     "application/json"
                 ],
@@ -270,7 +275,7 @@ const docTemplate = `{
                 "tags": [
                     "comments"
                 ],
-                "summary": "Post a new comment",
+                "summary": "Post a new comment on a recipe",
                 "parameters": [
                     {
                         "description": "Comment data",
@@ -290,19 +295,31 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Recipe not found",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "User has already commented on this recipe",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -444,7 +461,12 @@ const docTemplate = `{
         },
         "/favorite": {
             "post": {
-                "description": "Adds a favorite record linking a user and a recipe",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a favorite linking the current user (from JWT) and the specified recipe. A user can only favorite a recipe once.",
                 "consumes": [
                     "application/json"
                 ],
@@ -454,7 +476,7 @@ const docTemplate = `{
                 "tags": [
                     "favorites"
                 ],
-                "summary": "Add a favorite recipe for a user",
+                "summary": "Add a favorite recipe for the authenticated user",
                 "parameters": [
                     {
                         "description": "Favorite data",
@@ -462,7 +484,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Favorite"
+                            "$ref": "#/definitions/controller.PostFavoriteRequest"
                         }
                     }
                 ],
@@ -474,19 +496,31 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Recipe not found",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Favorite already exists",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -837,7 +871,12 @@ const docTemplate = `{
         },
         "/rating": {
             "post": {
-                "description": "Add a new rating or update existing rating for a recipe by a user. Score must be between 1 and 5.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new rating for the recipe by the current user (from JWT) or updates the score if one already exists. Score must be between 1 and 5.",
                 "consumes": [
                     "application/json"
                 ],
@@ -847,7 +886,7 @@ const docTemplate = `{
                 "tags": [
                     "ratings"
                 ],
-                "summary": "Add or update a rating for a recipe by a user",
+                "summary": "Add or update a rating for a recipe",
                 "parameters": [
                     {
                         "description": "Rating data",
@@ -855,7 +894,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Rating"
+                            "$ref": "#/definitions/controller.PostRatingRequest"
                         }
                     }
                 ],
@@ -867,19 +906,25 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request or score",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Recipe not found",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -2884,6 +2929,34 @@ const docTemplate = `{
                 }
             }
         },
+        "controller.PostFavoriteRequest": {
+            "type": "object",
+            "required": [
+                "recipe_id"
+            ],
+            "properties": {
+                "recipe_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controller.PostRatingRequest": {
+            "type": "object",
+            "required": [
+                "recipe_id",
+                "score"
+            ],
+            "properties": {
+                "recipe_id": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                }
+            }
+        },
         "controller.PostRecipeRequest": {
             "type": "object",
             "required": [
@@ -3136,6 +3209,9 @@ const docTemplate = `{
             "properties": {
                 "token": {
                     "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
