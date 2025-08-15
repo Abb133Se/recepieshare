@@ -28,17 +28,16 @@ type UserRatingsResponse struct {
 }
 
 // GetUserRecipesHandler godoc
-// @Summary      Get recipes created by a user
-// @Description  Retrieves recipes authored by the specified user, supports pagination via limit and offset query params
+// @Summary      Get user's recipes with pagination
+// @Description  Retrieve a paginated list of recipes for a specific user with total count
 // @Tags         users
 // @Produce      json
-// @Param        id      path      int     true   "User ID"
-// @Param        limit   query     int     false  "Limit number of recipes returned"
-// @Param        offset  query     int     false  "Offset for pagination"
-// @Success      200     {object}  UserRecipesResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      404     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Param        id     path      int     true   "User ID"
+// @Param        limit  query     int     false  "Limit number of recipes returned"
+// @Param        offset query     int     false  "Number of recipes to skip"
+// @Success      200    {object}  controller.UserRecipesResponse
+// @Failure      400    {object}  controller.ErrorResponse
+// @Failure      500    {object}  controller.ErrorResponse
 // @Router       /user/{id}/recipes [get]
 func GetUserRecipesHandler(c *gin.Context) {
 	userID, err := utils.ValidateEntityID(c.Param("id"))
@@ -70,17 +69,16 @@ func GetUserRecipesHandler(c *gin.Context) {
 }
 
 // GetUserFavoritesHandler godoc
-// @Summary      Get favorite recipes of a user
-// @Description  Retrieves favorite recipes of the specified user, supports pagination via limit and offset
+// @Summary      Get user's favorites with pagination
+// @Description  Retrieve a paginated list of favorite recipes for a specific user with total count
 // @Tags         users
 // @Produce      json
-// @Param        id      path      int     true   "User ID"
-// @Param        limit   query     int     false  "Limit number of favorites returned"
-// @Param        offset  query     int     false  "Offset for pagination"
-// @Success      200     {object}  UserFavoritesResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      404     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Param        id     path      int     true   "User ID"
+// @Param        limit  query     int     false  "Limit number of favorites returned"
+// @Param        offset query     int     false  "Number of favorites to skip"
+// @Success      200    {object}  controller.UserFavoritesResponse
+// @Failure      400    {object}  controller.ErrorResponse
+// @Failure      500    {object}  controller.ErrorResponse
 // @Router       /user/{id}/favorites [get]
 func GetUserFavoritesHandler(c *gin.Context) {
 	userID, err := utils.ValidateEntityID(c.Param("id"))
@@ -112,17 +110,16 @@ func GetUserFavoritesHandler(c *gin.Context) {
 }
 
 // GetUserRatingsHandler godoc
-// @Summary      Get ratings given by a user
-// @Description  Retrieves ratings provided by the specified user, supports pagination via limit and offset
+// @Summary      Get user's ratings with pagination
+// @Description  Retrieve a paginated list of ratings by a specific user with total count
 // @Tags         users
 // @Produce      json
-// @Param        id      path      int     true   "User ID"
-// @Param        limit   query     int     false  "Limit number of ratings returned"
-// @Param        offset  query     int     false  "Offset for pagination"
-// @Success      200     {object}  UserRatingsResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      404     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Param        id     path      int     true   "User ID"
+// @Param        limit  query     int     false  "Limit number of ratings returned"
+// @Param        offset query     int     false  "Number of ratings to skip"
+// @Success      200    {object}  controller.UserRatingsResponse
+// @Failure      400    {object}  controller.ErrorResponse
+// @Failure      500    {object}  controller.ErrorResponse
 // @Router       /user/{id}/ratings [get]
 func GetUserRatingsHandler(c *gin.Context) {
 	userID, err := utils.ValidateEntityID(c.Param("id"))

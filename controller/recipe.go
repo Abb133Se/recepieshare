@@ -379,17 +379,18 @@ func GetAllRecipeIngredientHandler(c *gin.Context) {
 }
 
 // GetAllRecipeCommentsHandler godoc
-// @Summary      Get paginated comments for a recipe
-// @Description  Retrieve comments with pagination and sorting for a recipe
-// @Tags         recipes
-// @Param        id      path      int     true  "Recipe ID"
-// @Param        limit   query     int     false "Limit number of comments"
-// @Param        offset  query     int     false "Offset for pagination"
-// @Param        sort    query     string  false "Sort order (e.g., date_desc)"
-// @Success      200     {object}  CommentsResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      404     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Summary      Get all comments for a recipe with pagination and sorting
+// @Description  Retrieve a paginated list of comments for a specific recipe with total count, optionally sorted by likes or date
+// @Tags         comments
+// @Produce      json
+// @Param        id    path      int     true   "Recipe ID"
+// @Param        limit query     int     false  "Limit number of comments returned"
+// @Param        offset query    int     false  "Number of comments to skip"
+// @Param        sort  query     string  false  "Sort order: likes_desc, likes_asc, date_asc, date_desc"
+// @Success      200   {object}  controller.CommentsResponse
+// @Failure      400   {object}  controller.ErrorResponse
+// @Failure      404   {object}  controller.ErrorResponse
+// @Failure      500   {object}  controller.ErrorResponse
 // @Router       /recipe/{id}/comments [get]
 func GetAllRecipeCommentsHandler(c *gin.Context) {
 	validID, err := utils.ValidateEntityID(c.Param("id"))
@@ -432,14 +433,21 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 }
 
 // GetAllRecipesHandler godoc
-// @Summary      Get paginated list of recipes
-// @Description  Retrieve recipes with pagination, including tags, categories, steps, and image IDs
+// @Summary      Get all recipes with pagination, filtering, and sorting
+// @Description  Retrieve a paginated list of recipes with total count, optionally filtered by title, ingredient, tags, categories, user, and sorted by title, creation date, rating, or favorites
 // @Tags         recipes
-// @Param        limit   query  int  false "Limit number of recipes"
-// @Param        offset  query  int  false "Offset for pagination"
-// @Success      200     {object}  RecipeListWithImagesResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Produce      json
+// @Param        limit         query     int     false  "Limit number of recipes returned"
+// @Param        offset        query     int     false  "Number of recipes to skip"
+// @Param        sort          query     string  false  "Sort order: title_asc, title_desc, created_asc, created_desc, rating_desc, favorites_desc"
+// @Param        title         query     string  false  "Filter by recipe title (partial match)"
+// @Param        ingredient    query     string  false  "Filter by ingredient name (partial match)"
+// @Param        tag_ids       query     string  false  "Filter by tag IDs (comma-separated)"
+// @Param        category_ids  query     string  false  "Filter by category IDs (comma-separated)"
+// @Param        user_id       query     int     false  "Filter by user ID"
+// @Success      200           {object}  controller.RecipeListWithImagesResponse
+// @Failure      400           {object}  controller.ErrorResponse
+// @Failure      500           {object}  controller.ErrorResponse
 // @Router       /recipe/list [get]
 func GetAllRecipesHandler(c *gin.Context) {
 	db, err := internal.GetGormInstance()
@@ -939,20 +947,21 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 }
 
 // SearchRecipesHandler godoc
-// @Summary      Search recipes
-// @Description  Retrieve a list of recipes matching the given filters, including tags, categories, steps, and image IDs
+// @Summary      Search recipes with pagination, filtering, and sorting
+// @Description  Search for recipes using various filters and retrieve a paginated list with total count, optionally sorted
 // @Tags         recipes
-// @Param        title         query   string  false  "Filter by recipe title (partial match)"
-// @Param        ingredient    query   string  false  "Filter by ingredient name"
-// @Param        tag_ids       query   string  false  "Comma-separated list of tag IDs"
-// @Param        category_ids  query   string  false  "Comma-separated list of category IDs"
-// @Param        user_id       query   string  false  "Filter by recipe author's user ID"
-// @Param        sort          query   string  false  "Sort field (e.g., 'title', 'created_at')"
-// @Param        limit         query   int     false  "Max number of recipes to return"
-// @Param        offset        query   int     false  "Number of recipes to skip"
-// @Success      200  {object}  RecipeListWithImagesResponse
-// @Failure      400  {object}  ErrorResponse
-// @Failure      500  {object}  ErrorResponse
+// @Produce      json
+// @Param        title         query     string  false  "Filter by recipe title (partial match)"
+// @Param        ingredient    query     string  false  "Filter by ingredient name (partial match)"
+// @Param        tag_ids       query     string  false  "Filter by tag IDs (comma-separated)"
+// @Param        category_ids  query     string  false  "Filter by category IDs (comma-separated)"
+// @Param        user_id       query     string  false  "Filter by user ID"
+// @Param        sort          query     string  false  "Sort order: title_asc, title_desc, created_asc, created_desc, rating_desc, favorites_desc"
+// @Param        limit         query     int     false  "Limit number of recipes returned"
+// @Param        offset        query     int     false  "Number of recipes to skip"
+// @Success      200           {object}  controller.RecipeListWithImagesResponse
+// @Failure      400           {object}  controller.ErrorResponse
+// @Failure      500           {object}  controller.ErrorResponse
 // @Router       /recipes/search [get]
 func SearchRecipesHandler(c *gin.Context) {
 	// Collect query parameters for filtering
@@ -967,7 +976,7 @@ func SearchRecipesHandler(c *gin.Context) {
 	// Initialize DB
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
 		return
 	}
 
@@ -983,7 +992,7 @@ func SearchRecipesHandler(c *gin.Context) {
 	var recipes []model.Recipe
 	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "search failed"})
 		return
 	}
 
