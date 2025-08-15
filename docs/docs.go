@@ -3042,6 +3042,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "favorite_count": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -3056,6 +3059,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.Ingredient"
                     }
+                },
+                "is_favorited": {
+                    "type": "boolean"
                 },
                 "steps": {
                     "type": "array",
