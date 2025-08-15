@@ -29,16 +29,18 @@ type AverageRatingResponse struct {
 }
 
 // PostRatingHandler godoc
-// @Summary      Add or update a rating for a recipe by a user
-// @Description  Add a new rating or update existing rating for a recipe by a user. Score must be between 1 and 5.
+// @Summary      Add or update a rating for a recipe
+// @Description  Adds a new rating for the recipe by the current user (from JWT) or updates the score if one already exists. Score must be between 1 and 5.
 // @Tags         ratings
 // @Accept       json
 // @Produce      json
-// @Param        rating  body      model.Rating  true  "Rating data"
+// @Security     BearerAuth
+// @Param        rating  body      PostRatingRequest  true  "Rating data"
 // @Success      200     {object}  RatingResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      404     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Failure      400     {object}  ErrorResponse "Invalid request or score"
+// @Failure      401     {object}  ErrorResponse "Unauthorized"
+// @Failure      404     {object}  ErrorResponse "Recipe not found"
+// @Failure      500     {object}  ErrorResponse "Internal server error"
 // @Router       /rating [post]
 func PostRatingHandler(c *gin.Context) {
 	var req PostRatingRequest
