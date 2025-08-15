@@ -3,7 +3,6 @@ package controller
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
@@ -37,21 +36,34 @@ type PostCommentRequest struct {
 // @Router       /comment [post]
 func PostCommentHandler(c *gin.Context) {
 	var req PostCommentRequest
-	var recipe model.Recipe
-	var user model.User
-
-	err := c.BindJSON(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "bad request"})
 		return
 	}
 
 	userID := c.GetUint("userID")
-	if userID != 0 {
-		if _, err := utils.ValidateEntityID(strconv.Itoa(int(userID))); err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
-			return
-		}
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		return
+	}
+
+	var recipe model.Recipe
+	if err := db.First(&recipe, req.RecipeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+		return
+	}
+
+	var existingComment model.Comment
+	if err := db.Where("user_id = ? AND recipe_id = ?", userID, req.RecipeID).
+		First(&existingComment).Error; err == nil {
+		c.JSON(http.StatusConflict, ErrorResponse{Error: "you have already commented on this recipe"})
+		return
 	}
 
 	comment := model.Comment{
@@ -60,34 +72,7 @@ func PostCommentHandler(c *gin.Context) {
 		RecipeID:    req.RecipeID,
 		UserID:      userID,
 	}
-
-	db, err := internal.GetGormInstance()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
-		return
-	}
-	err = db.First(&recipe, comment.RecipeID).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve recipe from server"})
-		return
-	}
-
-	err = db.First(&user, comment.UserID).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "user not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve user from server"})
-		return
-	}
-
-	err = db.Create(&comment).Error
-	if err != nil {
+	if err := db.Create(&comment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to create comment"})
 		return
 	}
