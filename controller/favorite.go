@@ -49,14 +49,12 @@ func PostFavoriteHandler(c *gin.Context) {
 		return
 	}
 
-	// Check recipe exists
 	var recipe model.Recipe
 	if err := db.First(&recipe, req.RecipeID).Error; err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
 		return
 	}
 
-	// Check if favorite already exists
 	var existing model.Favorite
 	if err := db.Where("user_id = ? AND recipe_id = ?", userID, req.RecipeID).
 		First(&existing).Error; err == nil {
@@ -64,7 +62,6 @@ func PostFavoriteHandler(c *gin.Context) {
 		return
 	}
 
-	// Create favorite
 	favorite := model.Favorite{UserID: userID, RecipeID: req.RecipeID}
 	if err := db.Create(&favorite).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to add favorite"})
