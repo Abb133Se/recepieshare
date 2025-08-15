@@ -27,7 +27,8 @@ type UserLoginRequest struct {
 }
 
 type UserLoginResponse struct {
-	Token string `json:"token"`
+	Token  string `json:"token"`
+	UserID uint   `json:"user_id"`
 }
 
 type ForgotPasswordRequest struct {
@@ -166,7 +167,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, UserLoginResponse{Token: tokenStr})
+	c.JSON(http.StatusOK, UserLoginResponse{Token: tokenStr, UserID: user.ID})
 }
 
 // ForgotPasswordHandler godoc
