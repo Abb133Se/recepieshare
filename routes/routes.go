@@ -12,7 +12,7 @@ func AddRoutes(r *gin.Engine) {
 	public := r.Group("/")
 	{
 		// Recipe read endpoints
-		public.GET("/recipe/:id", controller.GetRecipeHandler)
+		public.GET("/recipe/:id", middleware.ExtractUserFromToken(), controller.GetRecipeHandler)
 		public.GET("/recipe/list", controller.GetAllRecipesHandler)
 		public.GET("/recipe/:id/ingredients", controller.GetAllRecipeIngredientHandler)
 		public.GET("/recipe/:id/comments", controller.GetAllRecipeCommentsHandler)
