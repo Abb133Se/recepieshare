@@ -7,22 +7,24 @@ import (
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type UserRecipesResponse struct {
 	Message string         `json:"message"`
 	Data    []model.Recipe `json:"data"`
+	Count   int64          `json:"count"`
 }
 
 type UserFavoritesResponse struct {
 	Message string           `json:"message"`
 	Data    []model.Favorite `json:"data"`
+	Count   int64            `json:"count"`
 }
 
 type UserRatingsResponse struct {
 	Message string         `json:"message"`
 	Data    []model.Rating `json:"data"`
+	Count   int64          `json:"count"`
 }
 
 // GetUserRecipesHandler godoc
@@ -39,56 +41,32 @@ type UserRatingsResponse struct {
 // @Failure      500     {object}  ErrorResponse
 // @Router       /user/{id}/recipes [get]
 func GetUserRecipesHandler(c *gin.Context) {
-	var recipes []model.Recipe
-	var limit, offset = 1, 0
-
-	validID, err := utils.ValidateEntityID(c.Param("id"))
+	userID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
-
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	limit = validLimit
-	offset = validOffset
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
 		return
 	}
 
-	err = db.First(&model.User{}, validID).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
+	query := db.Model(&model.Recipe{}).Where("user_id = ?", userID)
 
-	err = db.Where("user_id = ?", validID).
-		Preload("Tags").
-		Preload("Categories").
-		Limit(limit).
-		Offset(offset).
-		Find(&recipes).Error
+	var recipes []model.Recipe
+	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipes"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve recipes"})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserRecipesResponse{
-		Message: "recipes fetcjed successfully",
+		Message: "recipes retrieved successfully",
 		Data:    recipes,
+		Count:   totalCount,
 	})
-
 }
 
 // GetUserFavoritesHandler godoc
@@ -105,49 +83,32 @@ func GetUserRecipesHandler(c *gin.Context) {
 // @Failure      500     {object}  ErrorResponse
 // @Router       /user/{id}/favorites [get]
 func GetUserFavoritesHandler(c *gin.Context) {
-	var favorites []model.Favorite
-
-	validID, err := utils.ValidateEntityID(c.Param("id"))
+	userID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
 		return
 	}
 
-	if err = db.First(&model.User{}, validID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user from db"})
-		return
-	}
+	query := db.Model(&model.Favorite{}).Where("user_id = ?", userID)
 
-	err = db.Where("user_id = ?", validID).
-		Limit(validLimit).
-		Offset(validOffset).
-		Find(&favorites).Error
+	var favorites []model.Favorite
+	totalCount, err := utils.PaginateAndCount(c, query, &favorites)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch favorites"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve favorites"})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserFavoritesResponse{
-		Message: "favorites fetched successfully",
+		Message: "favorites retrieved successfully",
 		Data:    favorites,
+		Count:   totalCount,
 	})
-
 }
 
 // GetUserRatingsHandler godoc
@@ -164,48 +125,30 @@ func GetUserFavoritesHandler(c *gin.Context) {
 // @Failure      500     {object}  ErrorResponse
 // @Router       /user/{id}/ratings [get]
 func GetUserRatingsHandler(c *gin.Context) {
-	var ratings []model.Rating
-
-	validID, err := utils.ValidateEntityID(c.Param("id"))
+	userID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
 		return
 	}
 
-	err = db.First(&model.User{}, validID).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"erro": "user not found"})
+	query := db.Model(&model.Rating{}).Where("user_id = ?", userID)
 
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user data"})
-		return
-	}
-
-	err = db.Where("user_id = ?", validID).
-		Offset(validOffset).
-		Limit(validLimit).
-		Find(&ratings).Error
+	var ratings []model.Rating
+	totalCount, err := utils.PaginateAndCount(c, query, &ratings)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch ratings"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve ratings"})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserRatingsResponse{
-		Message: "ratings fetched successfully",
+		Message: "ratings retrieved successfully",
 		Data:    ratings,
+		Count:   totalCount,
 	})
 }

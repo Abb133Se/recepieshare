@@ -16,6 +16,12 @@ type TagResponse struct {
 	Data    model.Tag `json:"data"`
 }
 
+type TagsListResponse struct {
+	Message string      `json:"message,omitempty"`
+	Data    []model.Tag `json:"data"`
+	Count   int64       `json:"count"`
+}
+
 // GetTagHandler godoc
 // @Summary      Get a tag by ID
 // @Description  Retrieves a tag by its ID
@@ -116,27 +122,43 @@ func PostTagHandler(c *gin.Context) {
 func GetAllTagsHandler(c *gin.Context) {
 	var tags []model.Tag
 
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	sort := c.DefaultQuery("sort", "")
+	var order string
+	switch sort {
+	case "name_desc":
+		order = "name DESC"
+	case "name_asc":
+		order = "name ASC"
+	case "created_desc":
+		order = "created_at DESC"
+	case "created_asc":
+		order = "created_at ASC"
+	default:
+		order = ""
 	}
-	limit := validLimit
-	offset := validOffset
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
 		return
 	}
 
-	err = db.Preload("Recipes").Limit(limit).Offset(offset).Find(&tags).Error
+	query := db.Model(&model.Tag{})
+	if order != "" {
+		query = query.Order(order)
+	}
+
+	totalCount, err := utils.PaginateAndCount(c, query, &tags)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch tags"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve tags"})
 		return
 	}
 
-	c.JSON(http.StatusOK, TagsResponse{Tags: tags})
+	c.JSON(http.StatusOK, TagsListResponse{
+		Message: "tags retrieved successfully",
+		Data:    tags,
+		Count:   totalCount,
+	})
 }
 
 // PutTagHandler godoc

@@ -132,14 +132,6 @@ func PostCategoryHandler(c *gin.Context) {
 // @Router       /categories [get]
 func GetAllCategoriesHandler(c *gin.Context) {
 	var categories []model.Category
-	limit, offset := 10, 0
-
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
-		return
-	}
-	limit, offset = validLimit, validOffset
 
 	sort := c.DefaultQuery("sort", "")
 	var order string
@@ -162,26 +154,22 @@ func GetAllCategoriesHandler(c *gin.Context) {
 		return
 	}
 
-	query := db.Model(&model.Category{}).Limit(limit).Offset(offset)
+	query := db.Model(&model.Category{})
 	if order != "" {
 		query = query.Order(order)
 	}
 
-	if err := query.Find(&categories).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve categories"})
-		return
-	}
-
-	var categoryCount int64
-	if err := db.Model(&model.Category{}).Count(&categoryCount).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to count categories"})
+	// Use modular func: Validates, counts, paginates, fetches.
+	totalCount, err := utils.PaginateAndCount(c, query, &categories)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve categories " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, CategoriesResponse{
 		Message: "categories retrieved successfully",
 		Data:    categories,
-		Count:   categoryCount,
+		Count:   totalCount, // Now guaranteed.
 	})
 }
 
