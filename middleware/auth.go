@@ -47,3 +47,22 @@ func AuthenticatJWT() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func ExtractUserFromToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenStr := parts[1]
+				claims, err := token.VerifyToken(tokenStr)
+				if err == nil {
+					if idFloat, ok := claims["sub"].(float64); ok {
+						c.Set("userID", uint(idFloat))
+					}
+				}
+			}
+		}
+		c.Next()
+	}
+}

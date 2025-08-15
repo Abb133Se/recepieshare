@@ -89,17 +89,19 @@ type NutritionResponse struct {
 }
 
 type RecipeWithImageIDs struct {
-	ID          uint               `json:"id"`
-	Title       string             `json:"title"`
-	Text        string             `json:"text"`
-	UserID      uint               `json:"user_id"`
-	Ingredients []model.Ingredient `json:"ingredients"`
-	Tags        []model.Tag        `json:"tags"`
-	Categories  []model.Category   `json:"categories"`
-	Steps       []model.Step       `json:"steps"`
-	Images      []uint             `json:"images"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+	ID            uint               `json:"id"`
+	Title         string             `json:"title"`
+	Text          string             `json:"text"`
+	UserID        uint               `json:"user_id"`
+	Ingredients   []model.Ingredient `json:"ingredients"`
+	Tags          []model.Tag        `json:"tags"`
+	Categories    []model.Category   `json:"categories"`
+	Steps         []model.Step       `json:"steps"`
+	Images        []uint             `json:"images"`
+	FavoriteCount int64              `json:"favorite_count"`
+	IsFavorited   bool               `json:"is_favorited"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
 }
 
 type RecipeListWithImagesResponse struct {
@@ -152,18 +154,34 @@ func GetRecipeHandler(c *gin.Context) {
 
 	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
 
+	var favoriteCount int64
+	db.Model(&model.Favorite{}).Where("recipe_id = ?", recipe.ID).Count(&favoriteCount)
+
+	isFavorited := false
+	if userIDVal, exists := c.Get("userID"); exists {
+		if userID, ok := userIDVal.(uint); ok {
+			var favExists int64
+			db.Model(&model.Favorite{}).
+				Where("recipe_id = ? AND user_id = ?", recipe.ID, userID).
+				Count(&favExists)
+			isFavorited = favExists > 0
+		}
+	}
+
 	resp := RecipeWithImageIDs{
-		ID:          recipe.ID,
-		Title:       recipe.Title,
-		Text:        recipe.Text,
-		UserID:      recipe.UserID,
-		Ingredients: recipe.Ingredients,
-		Tags:        recipe.Tags,
-		Categories:  recipe.Categories,
-		Steps:       recipe.Steps,
-		Images:      imageIDs,
-		CreatedAt:   recipe.CreatedAt,
-		UpdatedAt:   recipe.UpdatedAt,
+		ID:            recipe.ID,
+		Title:         recipe.Title,
+		Text:          recipe.Text,
+		UserID:        recipe.UserID,
+		Ingredients:   recipe.Ingredients,
+		Tags:          recipe.Tags,
+		Categories:    recipe.Categories,
+		Steps:         recipe.Steps,
+		Images:        imageIDs,
+		FavoriteCount: favoriteCount,
+		IsFavorited:   isFavorited,
+		CreatedAt:     recipe.CreatedAt,
+		UpdatedAt:     recipe.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, resp)
