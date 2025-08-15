@@ -107,6 +107,7 @@ type RecipeWithImageIDs struct {
 type RecipeListWithImagesResponse struct {
 	Message string               `json:"message"`
 	Data    []RecipeWithImageIDs `json:"data"`
+	Count   int64                `json:"count"`
 }
 
 var API_KEY = "YTAMecQ6C06ClaR/HmS26g==OUlc0LkiJgLyFjhv"
@@ -391,81 +392,43 @@ func GetAllRecipeIngredientHandler(c *gin.Context) {
 // @Failure      500     {object}  ErrorResponse
 // @Router       /recipe/{id}/comments [get]
 func GetAllRecipeCommentsHandler(c *gin.Context) {
-	var comments []model.Comment
-
-	var limit, offset = 1, 0
-
-	id := c.Param("id")
-
-	validID, err := utils.ValidateEntityID(id)
+	validID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
-
-	validLimit, validOffset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	limit = validLimit
-	offset = validOffset
-
-	sortParam := c.DefaultQuery("sort", "date_desc")
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
 		return
 	}
 
-	err = db.First(&model.Recipe{}, validID).Error
+	var recipe model.Recipe
+	if err := db.First(&recipe, validID).Error; err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+		return
+	}
+
+	sort := c.Query("sort")
+	query := db.Model(&model.Comment{}).
+		Select("comments.*, users.name AS user_name").
+		Joins("JOIN users ON users.id = comments.user_id").
+		Where("comments.recipe_id = ?", validID)
+	query = utils.ApplyCommentSorting(query, sort)
+
+	var comments []CommentWithUserName
+	totalCount, err := utils.PaginateAndCount(c, query, &comments)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve comments"})
 		return
-	}
-
-	query := db.Model(&model.Comment{}).Where("recipe_id = ?", validID).Limit(limit).Offset(offset)
-	query = utils.ApplyCommentSorting(query, sortParam)
-
-	err = query.Find(&comments).Error
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve comments"})
-		return
-	}
-
-	var commentCount int64
-	err = db.Model(&model.Comment{}).Where("recipe_id = ?", validID).Count(&commentCount).Error
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to count comments"})
-		return
-	}
-
-	var responseComments []CommentWithUserName
-	for _, comment := range comments {
-		var user model.User
-		var commenterName string
-		if comment.UserID != 0 {
-			if err := db.First(&user, comment.UserID).Error; err == nil {
-				commenterName = user.Name
-			}
-		}
-		responseComments = append(responseComments, CommentWithUserName{
-			Comment:       comment,
-			CommenterName: commenterName,
-		})
 	}
 
 	c.JSON(http.StatusOK, CommentsResponse{
 		Message: "comments retrieved successfully",
-		Data:    responseComments,
-		Count:   commentCount,
+		Data:    comments,
+		Count:   totalCount,
 	})
-
 }
 
 // GetAllRecipesHandler godoc
@@ -479,46 +442,46 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 // @Failure      500     {object}  ErrorResponse
 // @Router       /recipe/list [get]
 func GetAllRecipesHandler(c *gin.Context) {
-	var recipes []model.Recipe
-
-	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to DB"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
 		return
 	}
 
-	if err := db.Preload("Tags").Preload("Categories").
-		Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipes"})
+	query := db.Model(&model.Recipe{}).Preload("Ingredients").Preload("Tags").Preload("Categories").Preload("Steps")
+	query = utils.ApplyRecipeFilters(query, c.QueryMap(""))
+	sort := c.Query("sort")
+	query = utils.ApplyRecipeSorting(query, sort)
+
+	var baseRecipes []model.Recipe
+	totalCount, err := utils.PaginateAndCount(c, query, &baseRecipes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve recipes"})
 		return
 	}
 
-	var recipesWithImages []RecipeWithImageIDs
-	for _, r := range recipes {
-		imageIDs, _ := service.GetImageIDsForEntity("recipe", r.ID)
-		recipesWithImages = append(recipesWithImages, RecipeWithImageIDs{
-			ID:         r.ID,
-			Title:      r.Title,
-			Text:       r.Text,
-			UserID:     r.UserID,
-			Tags:       r.Tags,
-			Categories: r.Categories,
-			Steps:      r.Steps,
-			Images:     imageIDs,
-			CreatedAt:  r.CreatedAt,
-			UpdatedAt:  r.UpdatedAt,
+	var responseData []RecipeWithImageIDs
+	for _, recipe := range baseRecipes {
+		imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
+		responseData = append(responseData, RecipeWithImageIDs{
+			ID:          recipe.ID,
+			Title:       recipe.Title,
+			Text:        recipe.Text,
+			UserID:      recipe.UserID,
+			Ingredients: recipe.Ingredients,
+			Tags:        recipe.Tags,
+			Categories:  recipe.Categories,
+			Steps:       recipe.Steps,
+			Images:      imageIDs,
+			CreatedAt:   recipe.CreatedAt,
+			UpdatedAt:   recipe.UpdatedAt,
 		})
 	}
 
 	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
 		Message: "recipes retrieved successfully",
-		Data:    recipesWithImages,
+		Data:    responseData,
+		Count:   totalCount,
 	})
 }
 
@@ -992,12 +955,7 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /recipes/search [get]
 func SearchRecipesHandler(c *gin.Context) {
-	db, err := internal.GetGormInstance()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
-		return
-	}
-
+	// Collect query parameters for filtering
 	params := map[string]string{
 		"title":        c.Query("title"),
 		"ingredient":   c.Query("ingredient"),
@@ -1006,26 +964,30 @@ func SearchRecipesHandler(c *gin.Context) {
 		"user_id":      c.Query("user_id"),
 	}
 
+	// Initialize DB
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		return
+	}
+
+	// Build query with filters and sorting
 	query := db.Model(&model.Recipe{}).
 		Preload("Tags").
 		Preload("Categories").
 		Preload("User")
-
 	query = utils.ApplyRecipeFilters(query, params)
 	query = utils.ApplyRecipeSorting(query, c.Query("sort"))
 
-	limit, offset, err := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
+	// Use PaginateAndCount for pagination and counting
 	var recipes []model.Recipe
-	if err := query.Limit(limit).Offset(offset).Find(&recipes).Error; err != nil {
+	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
 		return
 	}
 
+	// Post-process to add image IDs
 	var recipesWithImages []RecipeWithImageIDs
 	for _, r := range recipes {
 		imageIDs, _ := service.GetImageIDsForEntity("recipe", r.ID)
@@ -1046,5 +1008,6 @@ func SearchRecipesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
 		Message: "recipes retrieved successfully",
 		Data:    recipesWithImages,
+		Count:   totalCount, // Added to include total count
 	})
 }
