@@ -10,7 +10,7 @@ type Recipe struct {
 	User        User         `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"-"`
 	Ingredients []Ingredient `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE" json:"ingredients"`
 	Comments    []Comment    `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE" json:"comments"`
-	Favorited   []Favorite   `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE" json:"favorites"`
+	Favorites   []Favorite   `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE" json:"favorites"`
 	Ratings     []Rating     `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE" json:"ratings"`
 	Tags        []Tag        `gorm:"many2many:recipe_tags;constraint:OnDelete:CASCADE" json:"tags"`
 	Categories  []Category   `gorm:"many2many:recipe_categories;constraint:OnDelete:CASCADE" json:"categories"`

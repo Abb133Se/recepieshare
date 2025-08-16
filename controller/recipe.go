@@ -285,47 +285,58 @@ func PostRecipeHandler(c *gin.Context) {
 
 // DeleteRecipeHandler godoc
 // @Summary      Delete a recipe by ID
-// @Description  Delete a recipe given its ID
+// @Description  Delete a recipe and all its associated entities if it belongs to the authenticated user
 // @Tags         recipes
+// @Security     BearerAuth
 // @Param        id   path      int  true  "Recipe ID"
 // @Success      200  {object}  SimpleMessageResponse
 // @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /recipe/{id} [delete]
 func DeleteRecipeHandler(c *gin.Context) {
-	var recepie model.Recipe
+	userID := c.GetUint("userID")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		return
+	}
 
-	validID, err := utils.ValidateEntityID(c.Param("id"))
+	recipeID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "internal error",
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "database error"})
 		return
 	}
 
-	err = db.First(&recepie, validID).Error
-	if err != nil {
-		c.JSON(404, gin.H{
-			"message": "not found",
-		})
+	var recipe model.Recipe
+	if err := db.Where("id = ? AND user_id = ?", recipeID, userID).
+		First(&recipe).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: "not allowed to delete this recipe"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch recipe"})
 		return
 	}
 
-	if err := db.Delete(&recepie).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to delete recipe"})
+	// Clear M2M associations (join tables must be cleaned manually)
+	_ = db.Model(&recipe).Association("Tags").Clear()
+	_ = db.Model(&recipe).Association("Categories").Clear()
+
+	// Delete recipe (cascade takes care of children)
+	if err := db.Delete(&recipe).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete recipe"})
 		return
 	}
 
-	c.JSON(200, SimpleMessageResponse{
-		Message: "Recipe deleted successfully",
-	})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "recipe and its associations deleted successfully"})
 }
 
 // GetAllRecipeIngredientHandler godoc

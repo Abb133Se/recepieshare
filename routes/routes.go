@@ -98,9 +98,9 @@ func AddRoutes(r *gin.Engine) {
 		protected.DELETE("/recipe/:id/image/:imageId", controller.DeleteRecipeImageHandler)
 
 		// User profile image routes
-		protected.POST("/user/:id/profile-image", controller.PostUploadUserProfileImageHandler)
-		protected.GET("/user/:id/profile-image/:imageId", controller.GetServeUserProfileImageHandler)
-		protected.DELETE("/user/:id/profile-image/:imageId", controller.DeleteUserProfileImageHandler)
+		protected.POST("/user/profile-image", controller.PostUploadUserProfileImageHandler)
+		protected.GET("/user/profile-image/:imageId", controller.GetServeUserProfileImageHandler)
+		protected.DELETE("/user/profile-image/:imageId", controller.DeleteUserProfileImageHandler)
 
 		// Generic image routes
 		protected.GET("/image/:entity/:entityId/:imageId", controller.GetImageHandler)

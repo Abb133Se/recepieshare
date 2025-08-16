@@ -329,7 +329,12 @@ const docTemplate = `{
         },
         "/comment/{id}": {
             "delete": {
-                "description": "Delete a comment by its ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a comment if it belongs to the authenticated user",
                 "tags": [
                     "comments"
                 ],
@@ -352,6 +357,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -944,7 +961,12 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a rating by its ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a rating if it belongs to the authenticated user",
                 "tags": [
                     "ratings"
                 ],
@@ -967,6 +989,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -1215,7 +1249,12 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a recipe given its ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a recipe and all its associated entities if it belongs to the authenticated user",
                 "tags": [
                     "recipes"
                 ],
@@ -1238,6 +1277,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
                         }
@@ -1452,6 +1503,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/recipe/{id}/image": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads an image file and associates it with a recipe (must belong to the authenticated user)",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "Upload image for a recipe",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Recipe ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Image file (jpeg, png, webp)",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image uploaded successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or file error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not authorized to upload for this recipe",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/recipe/{id}/image/{imageId}": {
             "get": {
                 "description": "Retrieves and serves an image associated with a recipe",
@@ -1503,7 +1626,12 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes an image associated with a recipe",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an image associated with a recipe (must belong to the authenticated user)",
                 "tags": [
                     "images"
                 ],
@@ -1543,57 +1671,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/recipe/{id}/images": {
-            "post": {
-                "description": "Uploads an image file and associates it with a recipe by recipe ID",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "images"
-                ],
-                "summary": "Upload image for a recipe",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Recipe ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Image file (jpeg, png, webp)",
-                        "name": "image",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Image uploaded successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input or file error",
+                    "403": {
+                        "description": "Not authorized to delete this recipe image",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2438,6 +2517,161 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/profile-image": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads a single profile image for the authenticated user",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "Upload user profile image",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Image file (jpeg, png, webp)",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image uploaded successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or file error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/profile-image/{imageId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves and serves a user's profile image",
+                "produces": [
+                    "image/*"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "Serve authenticated user's profile image",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Image ID",
+                        "name": "imageId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image file served"
+                    },
+                    "400": {
+                        "description": "Invalid ID parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Image not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a user's profile image by ID",
+                "tags": [
+                    "images"
+                ],
+                "summary": "Delete authenticated user's profile image",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Image ID",
+                        "name": "imageId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profile image deleted successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/user/ratings": {
             "get": {
                 "description": "Retrieve a paginated list of ratings for the logged-in user",
@@ -2525,167 +2759,6 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/{id}/profile-image": {
-            "post": {
-                "description": "Uploads a single profile image for a user",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "images"
-                ],
-                "summary": "Upload user profile image",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Image file (jpeg, png, webp)",
-                        "name": "image",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Image uploaded successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input or file error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/user/{id}/profile-image/{imageId}": {
-            "get": {
-                "description": "Retrieves and serves a user's profile image",
-                "produces": [
-                    "image/*"
-                ],
-                "tags": [
-                    "images"
-                ],
-                "summary": "Serve user profile image by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Image ID",
-                        "name": "imageId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Image file served"
-                    },
-                    "400": {
-                        "description": "Invalid ID parameters",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Image not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Deletes a user's profile image by ID",
-                "tags": [
-                    "images"
-                ],
-                "summary": "Delete user profile image",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Image ID",
-                        "name": "imageId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Profile image deleted successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid ID parameters",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
                         }
                     }
                 }

@@ -90,18 +90,25 @@ func PostRatingHandler(c *gin.Context) {
 
 // DeleteRatingHandler godoc
 // @Summary      Delete a rating by ID
-// @Description  Delete a rating by its ID
+// @Description  Delete a rating if it belongs to the authenticated user
 // @Tags         ratings
+// @Security     BearerAuth
 // @Param        id   path  int  true  "Rating ID"
 // @Success      200  {object}  SuccessMessageResponse
 // @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /rating/{id} [delete]
 func DeleteRatingHandler(c *gin.Context) {
-	var rating model.Rating
+	userID := c.GetUint("userID")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		return
+	}
 
-	validID, err := utils.ValidateEntityID(c.Param("id"))
+	ratingID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
@@ -113,18 +120,17 @@ func DeleteRatingHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.First(&rating, validID).Error
-	if err != nil {
+	var rating model.Rating
+	if err := db.Where("id = ? AND user_id = ?", ratingID, userID).First(&rating).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "rating not found"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: "not allowed to delete this rating"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch rating data"})
 		return
 	}
 
-	err = db.Delete(&model.Rating{}, validID).Error
-	if err != nil {
+	if err := db.Delete(&rating).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete rating"})
 		return
 	}
