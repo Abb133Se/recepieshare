@@ -2360,29 +2360,15 @@ const docTemplate = `{
         },
         "/tags": {
             "get": {
-                "description": "Retrieve a paginated list of tags with total count, optionally sorted by name or creation date",
+                "description": "Retrieve all tags, optionally sorted by name or creation date",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "tags"
                 ],
-                "summary": "Get all tags with pagination and sorting",
+                "summary": "Get all tags",
                 "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "Limit number of tags returned",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Number of tags to skip",
-                        "name": "offset",
-                        "in": "query"
-                    },
                     {
                         "type": "string",
                         "description": "Sort order: name_asc, name_desc, created_asc, created_desc",
@@ -2395,12 +2381,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/controller.TagsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
                         }
                     },
                     "500": {
