@@ -2,11 +2,12 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/model"
-	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type PostFavoriteRequest struct {
@@ -72,42 +73,60 @@ func PostFavoriteHandler(c *gin.Context) {
 }
 
 // DeleteFavoriteHandler godoc
-// @Summary      Delete a favorite by ID
-// @Description  Deletes a favorite record by its ID
+// @Summary      Remove a recipe from favorites
+// @Description  Unfavorites a recipe for the authenticated user using its recipe ID
 // @Tags         favorites
 // @Produce      json
-// @Param        id    path      int  true  "Favorite ID"
+// @Param        recipeId  path      int  true  "Recipe ID"
 // @Success      200   {object}  SimpleMessageResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      404   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
-// @Router       /favorite/{id} [delete]
+// @Router       /unfavorite [delete]
 func DeleteFavoriteHandler(c *gin.Context) {
-	var favorite model.Favorite
-
-	validID, err := utils.ValidateEntityID(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
-		return
-	}
-
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "fialed to connect to db"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection error"})
 		return
 	}
 
-	if err = db.First(&favorite, validID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "favorite does not exists"})
+	// Get logged-in user ID from context (set by your auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	err = db.Delete(&model.Favorite{}, validID).Error
+	// Get recipeId from request (query or body depending on design)
+	recipeIDParam := c.Query("recipe_id")
+	if recipeIDParam == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "recipeId is required"})
+		return
+	}
+
+	recipeID, err := strconv.Atoi(recipeIDParam)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete favorite"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid recipeId"})
 		return
 	}
 
-	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "favorite deleted successfully"})
+	// Find the favorite entry by userId + recipeId
+	var favorite model.Favorite
+	if err := db.Where("user_id = ? AND recipe_id = ?", userID, recipeID).First(&favorite).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "favorite not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query favorite"})
+		}
+		return
+	}
+
+	// Delete the favorite
+	if err := db.Delete(&favorite).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove favorite"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "recipe unfavorited successfully"})
 
 }

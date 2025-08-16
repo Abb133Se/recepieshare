@@ -890,37 +890,6 @@ paths:
       summary: Add a favorite recipe for the authenticated user
       tags:
       - favorites
-  /favorite/{id}:
-    delete:
-      description: Deletes a favorite record by its ID
-      parameters:
-      - description: Favorite ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/controller.SimpleMessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
-      summary: Delete a favorite by ID
-      tags:
-      - favorites
   /forgot-password:
     post:
       consumes:
@@ -2132,6 +2101,38 @@ paths:
       summary: Get all tags
       tags:
       - tags
+  /unfavorite:
+    delete:
+      description: Unfavorites a recipe for the authenticated user using its recipe
+        ID
+      parameters:
+      - description: Recipe ID
+        in: path
+        name: recipeId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.SimpleMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Remove a recipe from favorites
+      tags:
+      - favorites
   /user/{id}/favorites:
     get:
       description: Retrieve a paginated list of favorite recipes for a specific user

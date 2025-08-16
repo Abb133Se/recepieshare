@@ -70,7 +70,7 @@ func AddRoutes(r *gin.Engine) {
 
 		// Favorite management
 		protected.POST("/favorite", controller.PostFavoriteHandler)
-		protected.DELETE("/favorite/:id", controller.DeleteFavoriteHandler)
+		protected.DELETE("/unfavorite", controller.DeleteFavoriteHandler)
 
 		// Rating management
 		protected.POST("/rating", controller.PostRatingHandler)
