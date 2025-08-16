@@ -78,9 +78,9 @@ func AddRoutes(r *gin.Engine) {
 		protected.DELETE("/rating/:id", controller.DeleteRatingHandler)
 
 		// User-specific data
-		protected.GET("/user/:id/recipes", controller.GetUserRecipesHandler)
-		protected.GET("/user/:id/favorites", controller.GetUserFavoritesHandler)
-		protected.GET("/user/:id/ratings", controller.GetUserRatingsHandler)
+		protected.GET("/user/recipes", controller.GetUserRecipesHandler)
+		protected.GET("/user/favorites", controller.GetUserFavoritesHandler)
+		protected.GET("/user/ratings", controller.GetUserRatingsHandler)
 
 		// Tag management
 		protected.POST("/tag", controller.PostTagHandler)
