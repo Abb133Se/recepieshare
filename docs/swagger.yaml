@@ -760,7 +760,7 @@ paths:
       - comments
   /comment/{id}:
     delete:
-      description: Delete a comment by its ID
+      description: Delete a comment if it belongs to the authenticated user
       parameters:
       - description: Comment ID
         in: path
@@ -776,6 +776,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -784,6 +792,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a comment by ID
       tags:
       - comments
@@ -1127,7 +1137,7 @@ paths:
       - ratings
   /rating/{id}:
     delete:
-      description: Delete a rating by its ID
+      description: Delete a rating if it belongs to the authenticated user
       parameters:
       - description: Rating ID
         in: path
@@ -1143,6 +1153,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -1151,6 +1169,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a rating by ID
       tags:
       - ratings
@@ -1225,7 +1245,8 @@ paths:
       - recipes
   /recipe/{id}:
     delete:
-      description: Delete a recipe given its ID
+      description: Delete a recipe and all its associated entities if it belongs to
+        the authenticated user
       parameters:
       - description: Recipe ID
         in: path
@@ -1241,6 +1262,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -1249,6 +1278,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a recipe by ID
       tags:
       - recipes
@@ -1450,9 +1481,58 @@ paths:
       summary: Get all comments for a recipe with pagination and sorting
       tags:
       - comments
+  /recipe/{id}/image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image file and associates it with a recipe (must belong
+        to the authenticated user)
+      parameters:
+      - description: Recipe ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Image file (jpeg, png, webp)
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Image uploaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input or file error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not authorized to upload for this recipe
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload image for a recipe
+      tags:
+      - images
   /recipe/{id}/image/{imageId}:
     delete:
-      description: Deletes an image associated with a recipe
+      description: Deletes an image associated with a recipe (must belong to the authenticated
+        user)
       parameters:
       - description: Recipe ID
         in: path
@@ -1477,12 +1557,20 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "403":
+          description: Not authorized to delete this recipe image
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal server error
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Delete a recipe image by ID
       tags:
       - images
@@ -1517,46 +1605,6 @@ paths:
               type: string
             type: object
       summary: Serve recipe image by ID
-      tags:
-      - images
-  /recipe/{id}/images:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Uploads an image file and associates it with a recipe by recipe
-        ID
-      parameters:
-      - description: Recipe ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Image file (jpeg, png, webp)
-        in: formData
-        name: image
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Image uploaded successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid input or file error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Upload image for a recipe
       tags:
       - images
   /recipe/{id}/ingredients:
@@ -2133,114 +2181,6 @@ paths:
       summary: Remove a recipe from favorites
       tags:
       - favorites
-  /user/{id}/profile-image:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Uploads a single profile image for a user
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Image file (jpeg, png, webp)
-        in: formData
-        name: image
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Image uploaded successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid input or file error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Upload user profile image
-      tags:
-      - images
-  /user/{id}/profile-image/{imageId}:
-    delete:
-      description: Deletes a user's profile image by ID
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Image ID
-        in: path
-        name: imageId
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: Profile image deleted successfully
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Invalid ID parameters
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Delete user profile image
-      tags:
-      - images
-    get:
-      description: Retrieves and serves a user's profile image
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Image ID
-        in: path
-        name: imageId
-        required: true
-        type: integer
-      produces:
-      - image/*
-      responses:
-        "200":
-          description: Image file served
-        "400":
-          description: Invalid ID parameters
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Image not found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Serve user profile image by ID
-      tags:
-      - images
   /user/favorites:
     get:
       description: Retrieve a paginated list of favorite recipes for the logged-in
@@ -2272,6 +2212,105 @@ paths:
       summary: Get user's favorites with pagination
       tags:
       - users
+  /user/profile-image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a single profile image for the authenticated user
+      parameters:
+      - description: Image file (jpeg, png, webp)
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Image uploaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input or file error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload user profile image
+      tags:
+      - images
+  /user/profile-image/{imageId}:
+    delete:
+      description: Deletes a user's profile image by ID
+      parameters:
+      - description: Image ID
+        in: path
+        name: imageId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Profile image deleted successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid ID parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete authenticated user's profile image
+      tags:
+      - images
+    get:
+      description: Retrieves and serves a user's profile image
+      parameters:
+      - description: Image ID
+        in: path
+        name: imageId
+        required: true
+        type: integer
+      produces:
+      - image/*
+      responses:
+        "200":
+          description: Image file served
+        "400":
+          description: Invalid ID parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Image not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Serve authenticated user's profile image
+      tags:
+      - images
   /user/ratings:
     get:
       description: Retrieve a paginated list of ratings for the logged-in user

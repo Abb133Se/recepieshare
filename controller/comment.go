@@ -88,20 +88,25 @@ func PostCommentHandler(c *gin.Context) {
 
 // DeleteCommentHandler godoc
 // @Summary      Delete a comment by ID
-// @Description  Delete a comment by its ID
+// @Description  Delete a comment if it belongs to the authenticated user
 // @Tags         comments
+// @Security     BearerAuth
 // @Param        id   path  int  true  "Comment ID"
-// @Success      200  {object}  controller.SuccessMessageResponse
-// @Failure      400  {object}  controller.ErrorResponse
-// @Failure      404  {object}  controller.ErrorResponse
-// @Failure      500  {object}  controller.ErrorResponse
+// @Success      200  {object}  SuccessMessageResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /comment/{id} [delete]
 func DeleteCommentHandler(c *gin.Context) {
-	var comment model.Comment
+	userID := c.GetUint("userID")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		return
+	}
 
-	id := c.Param("id")
-
-	validID, err := utils.ValidateEntityID(id)
+	commentID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
@@ -113,18 +118,17 @@ func DeleteCommentHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.First(&comment, validID).Error
-	if err != nil {
+	var comment model.Comment
+	if err := db.Where("id = ? AND user_id = ?", commentID, userID).First(&comment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "comment not found"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: "not allowed to delete this comment"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 		return
 	}
 
-	err = db.Delete(&model.Comment{}, validID).Error
-	if err != nil {
+	if err := db.Delete(&comment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete comment"})
 		return
 	}
