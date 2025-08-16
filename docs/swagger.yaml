@@ -2133,42 +2133,6 @@ paths:
       summary: Remove a recipe from favorites
       tags:
       - favorites
-  /user/{id}/favorites:
-    get:
-      description: Retrieve a paginated list of favorite recipes for a specific user
-        with total count
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Limit number of favorites returned
-        in: query
-        name: limit
-        type: integer
-      - description: Number of favorites to skip
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/controller.UserFavoritesResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get user's favorites with pagination
-      tags:
-      - users
   /user/{id}/profile-image:
     post:
       consumes:
@@ -2277,16 +2241,41 @@ paths:
       summary: Serve user profile image by ID
       tags:
       - images
-  /user/{id}/ratings:
+  /user/favorites:
     get:
-      description: Retrieve a paginated list of ratings by a specific user with total
-        count
+      description: Retrieve a paginated list of favorite recipes for the logged-in
+        user
       parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
+      - description: Limit number of favorites returned
+        in: query
+        name: limit
         type: integer
+      - description: Number of favorites to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.UserFavoritesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Get user's favorites with pagination
+      tags:
+      - users
+  /user/ratings:
+    get:
+      description: Retrieve a paginated list of ratings for the logged-in user
+      parameters:
       - description: Limit number of ratings returned
         in: query
         name: limit
@@ -2313,16 +2302,11 @@ paths:
       summary: Get user's ratings with pagination
       tags:
       - users
-  /user/{id}/recipes:
+  /user/recipes:
     get:
-      description: Retrieve a paginated list of recipes for a specific user with total
-        count
+      description: Retrieve a paginated list of recipes for the logged-in user with
+        total count
       parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
       - description: Limit number of recipes returned
         in: query
         name: limit

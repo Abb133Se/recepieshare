@@ -29,22 +29,23 @@ type UserRatingsResponse struct {
 
 // GetUserRecipesHandler godoc
 // @Summary      Get user's recipes with pagination
-// @Description  Retrieve a paginated list of recipes for a specific user with total count
+// @Description  Retrieve a paginated list of recipes for the logged-in user with total count
 // @Tags         users
 // @Produce      json
-// @Param        id     path      int     true   "User ID"
 // @Param        limit  query     int     false  "Limit number of recipes returned"
 // @Param        offset query     int     false  "Number of recipes to skip"
 // @Success      200    {object}  controller.UserRecipesResponse
 // @Failure      400    {object}  controller.ErrorResponse
 // @Failure      500    {object}  controller.ErrorResponse
-// @Router       /user/{id}/recipes [get]
+// @Router       /user/recipes [get]
 func GetUserRecipesHandler(c *gin.Context) {
-	userID, err := utils.ValidateEntityID(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	// ✅ Get userID from JWT middleware
+	userIDValue, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "user not authenticated"})
 		return
 	}
+	userID := userIDValue.(uint)
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -70,22 +71,22 @@ func GetUserRecipesHandler(c *gin.Context) {
 
 // GetUserFavoritesHandler godoc
 // @Summary      Get user's favorites with pagination
-// @Description  Retrieve a paginated list of favorite recipes for a specific user with total count
+// @Description  Retrieve a paginated list of favorite recipes for the logged-in user
 // @Tags         users
 // @Produce      json
-// @Param        id     path      int     true   "User ID"
 // @Param        limit  query     int     false  "Limit number of favorites returned"
 // @Param        offset query     int     false  "Number of favorites to skip"
 // @Success      200    {object}  controller.UserFavoritesResponse
 // @Failure      400    {object}  controller.ErrorResponse
 // @Failure      500    {object}  controller.ErrorResponse
-// @Router       /user/{id}/favorites [get]
+// @Router       /user/favorites [get]
 func GetUserFavoritesHandler(c *gin.Context) {
-	userID, err := utils.ValidateEntityID(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	userIDValue, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "user not authenticated"})
 		return
 	}
+	userID := userIDValue.(uint)
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -111,22 +112,22 @@ func GetUserFavoritesHandler(c *gin.Context) {
 
 // GetUserRatingsHandler godoc
 // @Summary      Get user's ratings with pagination
-// @Description  Retrieve a paginated list of ratings by a specific user with total count
+// @Description  Retrieve a paginated list of ratings for the logged-in user
 // @Tags         users
 // @Produce      json
-// @Param        id     path      int     true   "User ID"
 // @Param        limit  query     int     false  "Limit number of ratings returned"
 // @Param        offset query     int     false  "Number of ratings to skip"
 // @Success      200    {object}  controller.UserRatingsResponse
 // @Failure      400    {object}  controller.ErrorResponse
 // @Failure      500    {object}  controller.ErrorResponse
-// @Router       /user/{id}/ratings [get]
+// @Router       /user/ratings [get]
 func GetUserRatingsHandler(c *gin.Context) {
-	userID, err := utils.ValidateEntityID(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	userIDValue, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "user not authenticated"})
 		return
 	}
+	userID := userIDValue.(uint)
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
