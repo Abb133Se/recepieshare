@@ -1205,7 +1205,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Updates the title, text, ingredients, and steps of a specific recipe",
+                "description": "Updates a recipe by ID. Replaces title, text, ingredients, steps, tags, and categories.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1215,7 +1215,7 @@ const docTemplate = `{
                 "tags": [
                     "recipes"
                 ],
-                "summary": "Update a recipe",
+                "summary": "Update an existing recipe",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1244,19 +1244,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
+                            "$ref": "#/definitions/controller.SimpleMessageResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
+                            "$ref": "#/definitions/controller.SimpleMessageResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/controller.ErrorResponse"
+                            "$ref": "#/definitions/controller.SimpleMessageResponse"
                         }
                     }
                 }

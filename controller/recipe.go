@@ -494,51 +494,55 @@ func GetAllRecipesHandler(c *gin.Context) {
 }
 
 // PutRecipeUpdateHandler godoc
-// @Summary      Update a recipe
-// @Description  Updates the title, text, ingredients, and steps of a specific recipe
+// @Summary      Update an existing recipe
+// @Description  Updates a recipe by ID. Replaces title, text, ingredients, steps, tags, and categories.
 // @Tags         recipes
 // @Accept       json
 // @Produce      json
-// @Param        id    path      int     true  "Recipe ID"
-// @Param        recipe  body    object  true  "Updated recipe data"
-// @Success      200     {object}  SimpleMessageResponse
-// @Failure      400     {object}  ErrorResponse
-// @Failure      404     {object}  ErrorResponse
-// @Failure      500     {object}  ErrorResponse
+// @Param        id    path      int  true  "Recipe ID"
+// @Param        recipe body     object true "Updated recipe data"
+// @Success      200   {object}  controller.SimpleMessageResponse
+// @Failure      400   {object}  controller.SimpleMessageResponse
+// @Failure      404   {object}  controller.SimpleMessageResponse
+// @Failure      500   {object}  controller.SimpleMessageResponse
 // @Router       /recipe/{id} [put]
 func PutRecipeUpdateHandler(c *gin.Context) {
 	var input struct {
-		Title      string             `json:"title"`
-		Text       string             `json:"text"`
-		Ingredient []model.Ingredient `json:"ingridients"`
-		Steps      []model.Step       `json:"steps"`
+		Title       string             `json:"title"`
+		Text        string             `json:"text"`
+		Ingredients []model.Ingredient `json:"ingredients"`
+		Steps       []model.Step       `json:"steps"`
+		Tags        []model.Tag        `json:"tags"`
+		Categories  []uint             `json:"categories"`
 	}
 
 	var recipe model.Recipe
 
 	validID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, SimpleMessageResponse{Message: err.Error()})
 		return
 	}
 
 	if err = c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, SimpleMessageResponse{Message: "invalid input: " + err.Error()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "faild to connect to db"})
+		c.JSON(http.StatusInternalServerError, SimpleMessageResponse{Message: "failed to connect to db"})
 		return
 	}
 
-	if err = db.First(&recipe, validID).Error; err != nil {
+	if err = db.Preload("Ingredients").Preload("Steps").
+		Preload("Tags").Preload("Categories").
+		First(&recipe, validID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+			c.JSON(http.StatusNotFound, SimpleMessageResponse{Message: "recipe not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipe"})
+		c.JSON(http.StatusInternalServerError, SimpleMessageResponse{Message: "failed to fetch recipe"})
 		return
 	}
 
@@ -550,38 +554,64 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			return err
 		}
 
-		if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&model.Ingredient{}).Error; err != nil {
+		for i := range input.Ingredients {
+			input.Ingredients[i].RecipeID = recipe.ID
+		}
+		if err := tx.Model(&recipe).Association("Ingredients").Replace(input.Ingredients); err != nil {
 			return err
 		}
 
-		for _, ing := range input.Ingredient {
-			ing.RecipeID = recipe.ID
-			if err := tx.Create(&ing).Error; err != nil {
-				return err
-			}
+		for i := range input.Steps {
+			input.Steps[i].RecipeID = recipe.ID
 		}
-
-		if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&model.Step{}).Error; err != nil {
+		if err := tx.Model(&recipe).Association("Steps").Replace(input.Steps); err != nil {
 			return err
 		}
 
-		for _, step := range input.Steps {
-			step.RecipeID = recipe.ID
-			if err := tx.Create(&step).Error; err != nil {
+		var finalTags []model.Tag
+		for _, t := range input.Tags {
+			var existing model.Tag
+			if err := tx.Where("name = ?", t.Name).First(&existing).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					if err := tx.Create(&t).Error; err != nil {
+						return err
+					}
+					finalTags = append(finalTags, t)
+				} else {
+					return err
+				}
+			} else {
+				finalTags = append(finalTags, existing)
+			}
+		}
+		if err := tx.Model(&recipe).Association("Tags").Replace(finalTags); err != nil {
+			return err
+		}
+
+		// Handle Categories (only accept existing IDs)
+		var categories []model.Category
+		if len(input.Categories) > 0 {
+			if err := tx.Where("id IN ?", input.Categories).Find(&categories).Error; err != nil {
 				return err
 			}
+			// Validate count
+			if len(categories) != len(input.Categories) {
+				return fmt.Errorf("one or more category IDs are invalid")
+			}
+		}
+		if err := tx.Model(&recipe).Association("Categories").Replace(categories); err != nil {
+			return err
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "couldn't update recipe", "detail": err.Error()})
+		c.JSON(http.StatusInternalServerError, SimpleMessageResponse{Message: "couldn't update recipe: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "recipe updated successfully"})
-
 }
 
 // GetTopRatedRecipesHandler godoc
