@@ -110,15 +110,12 @@ func PostTagHandler(c *gin.Context) {
 }
 
 // GetAllTagsHandler godoc
-// @Summary      Get all tags with pagination and sorting
-// @Description  Retrieve a paginated list of tags with total count, optionally sorted by name or creation date
+// @Summary      Get all tags
+// @Description  Retrieve all tags, optionally sorted by name or creation date
 // @Tags         tags
 // @Produce      json
-// @Param        limit   query     int     false  "Limit number of tags returned" default(10)
-// @Param        offset  query     int     false  "Number of tags to skip" default(0)
 // @Param        sort    query     string  false  "Sort order: name_asc, name_desc, created_asc, created_desc"
 // @Success      200     {object}  controller.TagsResponse
-// @Failure      400     {object}  controller.ErrorResponse
 // @Failure      500     {object}  controller.ErrorResponse
 // @Router       /tags [get]
 func GetAllTagsHandler(c *gin.Context) {
@@ -150,8 +147,7 @@ func GetAllTagsHandler(c *gin.Context) {
 		query = query.Order(order)
 	}
 
-	totalCount, err := utils.PaginateAndCount(c, query, &tags)
-	if err != nil {
+	if err := query.Find(&tags).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve tags"})
 		return
 	}
@@ -159,7 +155,7 @@ func GetAllTagsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, TagsListResponse{
 		Message: "tags retrieved successfully",
 		Data:    tags,
-		Count:   totalCount,
+		Count:   int64(len(tags)),
 	})
 }
 

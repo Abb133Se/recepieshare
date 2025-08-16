@@ -2111,19 +2111,8 @@ paths:
       - tags
   /tags:
     get:
-      description: Retrieve a paginated list of tags with total count, optionally
-        sorted by name or creation date
+      description: Retrieve all tags, optionally sorted by name or creation date
       parameters:
-      - default: 10
-        description: Limit number of tags returned
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Number of tags to skip
-        in: query
-        name: offset
-        type: integer
       - description: 'Sort order: name_asc, name_desc, created_asc, created_desc'
         in: query
         name: sort
@@ -2135,15 +2124,11 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/controller.TagsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/controller.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: Get all tags with pagination and sorting
+      summary: Get all tags
       tags:
       - tags
   /user/{id}/favorites:
