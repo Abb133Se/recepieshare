@@ -81,6 +81,7 @@ func AddRoutes(r *gin.Engine) {
 		protected.GET("/user/recipes", controller.GetUserRecipesHandler)
 		protected.GET("/user/favorites", controller.GetUserFavoritesHandler)
 		protected.GET("/user/ratings", controller.GetUserRatingsHandler)
+		protected.GET("/user/profile", controller.GetUserProfile)
 
 		// Tag management
 		protected.POST("/tag", controller.PostTagHandler)
