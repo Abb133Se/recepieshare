@@ -220,6 +220,28 @@ definitions:
       message:
         type: string
     type: object
+  controller.RecipeSummary:
+    description: Minimal recipe representation used to highlight "most popular" and
+      "highest rated" recipes.
+    properties:
+      count:
+        description: Favorite count for most-popular recipe; only present if relevant
+        example: 120
+        type: integer
+      id:
+        description: Unique identifier of the recipe
+        example: 7
+        type: integer
+      score:
+        description: Rating score for highest-rated recipe (scale 1–5); only present
+          if relevant
+        example: 4.8
+        type: number
+      title:
+        description: Title of the recipe
+        example: Classic Pancakes
+        type: string
+    type: object
   controller.RecipeWithImageIDs:
     properties:
       categories:
@@ -346,6 +368,35 @@ definitions:
       user_id:
         type: integer
     type: object
+  controller.UserProfileResponse:
+    description: Full user profile including base user data, profile image, aggregated
+      statistics, and highlighted recipes.
+    properties:
+      highest_rated_recipe:
+        allOf:
+        - $ref: '#/definitions/controller.RecipeSummary'
+        description: The user's recipe with the highest average rating (if exists)
+      most_popular_recipe:
+        allOf:
+        - $ref: '#/definitions/controller.RecipeSummary'
+        description: The user's recipe with the highest number of favorites (if exists)
+      profile_image:
+        allOf:
+        - $ref: '#/definitions/model.Image'
+        description: Profile image associated with the user (if uploaded), including
+          file path and metadata
+      stats:
+        allOf:
+        - $ref: '#/definitions/controller.UserStats'
+        description: Aggregated statistics about user's activity (recipes, comments,
+          favorites, ratings)
+      user:
+        allOf:
+        - $ref: '#/definitions/model.User'
+        description: |-
+          Base user information (name, email, etc.)
+          Warning: password and sensitive fields are omitted from this response
+    type: object
   controller.UserRatingsResponse:
     properties:
       count:
@@ -383,6 +434,47 @@ definitions:
     - last_name
     - name
     - password
+    type: object
+  controller.UserStats:
+    description: Aggregated statistics based on the user's activity in the system.
+    properties:
+      average_likes_per_comment:
+        description: Average number of likes per comment posted by this user
+        example: 2.3
+        type: number
+      average_rating:
+        description: Average rating across all this user's recipes (scale 1–5)
+        example: 4.5
+        type: number
+      average_rating_given:
+        description: Average rating value this user gives when rating other recipes
+          (scale 1–5)
+        example: 3.8
+        type: number
+      total_comments:
+        description: Total number of comments posted by this user
+        example: 34
+        type: integer
+      total_favorites:
+        description: Total number of times this user's recipes were favorited by others
+        example: 87
+        type: integer
+      total_favorites_given:
+        description: Total number of recipes this user has favorited
+        example: 25
+        type: integer
+      total_likes_on_comments:
+        description: Sum of likes across all comments posted by this user
+        example: 56
+        type: integer
+      total_ratings_given:
+        description: Total number of ratings this user has given to other recipes
+        example: 19
+        type: integer
+      total_recipes:
+        description: Total number of recipes created by this user
+        example: 12
+        type: integer
     type: object
   model.Category:
     properties:
@@ -434,6 +526,23 @@ definitions:
     required:
     - recipe_id
     - user_id
+    type: object
+  model.Image:
+    properties:
+      created_at:
+        type: string
+      entity_id:
+        type: integer
+      entity_type:
+        type: string
+      format:
+        type: string
+      id:
+        type: integer
+      path:
+        type: string
+      size:
+        type: integer
     type: object
   model.Ingredient:
     properties:
@@ -547,6 +656,41 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  model.User:
+    properties:
+      comments:
+        items:
+          $ref: '#/definitions/model.Comment'
+        type: array
+      createdAt:
+        type: string
+      email:
+        type: string
+      favorites:
+        items:
+          $ref: '#/definitions/model.Favorite'
+        type: array
+      id:
+        type: integer
+      last_name:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      ratings:
+        items:
+          $ref: '#/definitions/model.Rating'
+        type: array
+      recipes:
+        items:
+          $ref: '#/definitions/model.Recipe'
+        type: array
+      salt:
+        type: string
+      updatedAt:
+        type: string
     type: object
 info:
   contact: {}
@@ -2210,6 +2354,33 @@ paths:
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
       summary: Get user's favorites with pagination
+      tags:
+      - users
+  /user/profile:
+    get:
+      description: |-
+        Fetches the complete profile of the authenticated user.
+        The response includes:
+        - **Base user info** (ID, name, email, timestamps)
+        - **Profile image** (optional, if uploaded)
+        - **User statistics** (totals, averages, likes, ratings, favorites)
+        - **Highlights** (most popular and highest-rated recipes created by the user)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile with details, stats, and highlights
+          schema:
+            $ref: '#/definitions/controller.UserProfileResponse'
+        "401":
+          description: 'Unauthorized: missing or invalid token'
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Get user profile
       tags:
       - users
   /user/profile-image:

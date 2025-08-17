@@ -2517,6 +2517,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/profile": {
+            "get": {
+                "description": "Fetches the complete profile of the authenticated user.\nThe response includes:\n- **Base user info** (ID, name, email, timestamps)\n- **Profile image** (optional, if uploaded)\n- **User statistics** (totals, averages, likes, ratings, favorites)\n- **Highlights** (most popular and highest-rated recipes created by the user)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "User profile with details, stats, and highlights",
+                        "schema": {
+                            "$ref": "#/definitions/controller.UserProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/profile-image": {
             "post": {
                 "security": [
@@ -3103,6 +3135,32 @@ const docTemplate = `{
                 }
             }
         },
+        "controller.RecipeSummary": {
+            "description": "Minimal recipe representation used to highlight \"most popular\" and \"highest rated\" recipes.",
+            "type": "object",
+            "properties": {
+                "count": {
+                    "description": "Favorite count for most-popular recipe; only present if relevant",
+                    "type": "integer",
+                    "example": 120
+                },
+                "id": {
+                    "description": "Unique identifier of the recipe",
+                    "type": "integer",
+                    "example": 7
+                },
+                "score": {
+                    "description": "Rating score for highest-rated recipe (scale 1–5); only present if relevant",
+                    "type": "number",
+                    "example": 4.8
+                },
+                "title": {
+                    "description": "Title of the recipe",
+                    "type": "string",
+                    "example": "Classic Pancakes"
+                }
+            }
+        },
         "controller.RecipeWithImageIDs": {
             "type": "object",
             "properties": {
@@ -3297,6 +3355,52 @@ const docTemplate = `{
                 }
             }
         },
+        "controller.UserProfileResponse": {
+            "description": "Full user profile including base user data, profile image, aggregated statistics, and highlighted recipes.",
+            "type": "object",
+            "properties": {
+                "highest_rated_recipe": {
+                    "description": "The user's recipe with the highest average rating (if exists)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controller.RecipeSummary"
+                        }
+                    ]
+                },
+                "most_popular_recipe": {
+                    "description": "The user's recipe with the highest number of favorites (if exists)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controller.RecipeSummary"
+                        }
+                    ]
+                },
+                "profile_image": {
+                    "description": "Profile image associated with the user (if uploaded), including file path and metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    ]
+                },
+                "stats": {
+                    "description": "Aggregated statistics about user's activity (recipes, comments, favorites, ratings)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controller.UserStats"
+                        }
+                    ]
+                },
+                "user": {
+                    "description": "Base user information (name, email, etc.)\nWarning: password and sensitive fields are omitted from this response",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    ]
+                }
+            }
+        },
         "controller.UserRatingsResponse": {
             "type": "object",
             "properties": {
@@ -3351,6 +3455,57 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "controller.UserStats": {
+            "description": "Aggregated statistics based on the user's activity in the system.",
+            "type": "object",
+            "properties": {
+                "average_likes_per_comment": {
+                    "description": "Average number of likes per comment posted by this user",
+                    "type": "number",
+                    "example": 2.3
+                },
+                "average_rating": {
+                    "description": "Average rating across all this user's recipes (scale 1–5)",
+                    "type": "number",
+                    "example": 4.5
+                },
+                "average_rating_given": {
+                    "description": "Average rating value this user gives when rating other recipes (scale 1–5)",
+                    "type": "number",
+                    "example": 3.8
+                },
+                "total_comments": {
+                    "description": "Total number of comments posted by this user",
+                    "type": "integer",
+                    "example": 34
+                },
+                "total_favorites": {
+                    "description": "Total number of times this user's recipes were favorited by others",
+                    "type": "integer",
+                    "example": 87
+                },
+                "total_favorites_given": {
+                    "description": "Total number of recipes this user has favorited",
+                    "type": "integer",
+                    "example": 25
+                },
+                "total_likes_on_comments": {
+                    "description": "Sum of likes across all comments posted by this user",
+                    "type": "integer",
+                    "example": 56
+                },
+                "total_ratings_given": {
+                    "description": "Total number of ratings this user has given to other recipes",
+                    "type": "integer",
+                    "example": 19
+                },
+                "total_recipes": {
+                    "description": "Total number of recipes created by this user",
+                    "type": "integer",
+                    "example": 12
                 }
             }
         },
@@ -3427,6 +3582,32 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Image": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "entity_id": {
+                    "type": "integer"
+                },
+                "entity_type": {
+                    "type": "string"
+                },
+                "format": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "size": {
                     "type": "integer"
                 }
             }
@@ -3594,6 +3775,59 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.User": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Comment"
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "favorites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Favorite"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "ratings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Rating"
+                    }
+                },
+                "recipes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Recipe"
+                    }
+                },
+                "salt": {
                     "type": "string"
                 },
                 "updatedAt": {
