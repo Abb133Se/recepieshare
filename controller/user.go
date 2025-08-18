@@ -16,9 +16,14 @@ type UserRecipesResponse struct {
 }
 
 type UserFavoritesResponse struct {
-	Message string           `json:"message"`
-	Data    []model.Favorite `json:"data"`
-	Count   int64            `json:"count"`
+	Message string              `json:"message"`
+	Data    []FavoriteWithTitle `json:"data"`
+	Count   int64               `json:"count"`
+}
+
+type FavoriteWithTitle struct {
+	model.Favorite
+	RecipeTitle string `json:"recipe_title"`
 }
 
 type UserRatingsResponse struct {
@@ -283,9 +288,12 @@ func GetUserFavoritesHandler(c *gin.Context) {
 		return
 	}
 
-	query := db.Model(&model.Favorite{}).Where("user_id = ?", userID)
+	query := db.Table("favorites").
+		Select("favorites.id, favorites.recipe_id, recipes.title as recipe_title").
+		Joins("JOIN recipes ON favorites.recipe_id = recipes.id").
+		Where("favorites.user_id = ?", userID)
 
-	var favorites []model.Favorite
+	var favorites []FavoriteWithTitle
 	totalCount, err := utils.PaginateAndCount(c, query, &favorites)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve favorites"})
