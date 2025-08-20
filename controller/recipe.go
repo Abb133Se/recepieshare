@@ -74,7 +74,7 @@ type CommentsResponse struct {
 
 type CommentWithUserName struct {
 	model.Comment
-	CommenterName string `json:"user_name"`
+	UserName string `json:"user_name"`
 }
 
 type TagsResponse struct {
@@ -423,22 +423,34 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 		return
 	}
 
-	sort := c.Query("sort")
+	sort := c.Query("sortOrder")
 	query := db.Model(&model.Comment{}).
 		Select("comments.*, users.name AS user_name").
 		Joins("JOIN users ON users.id = comments.user_id").
 		Where("comments.recipe_id = ?", validID)
 	query = utils.ApplyCommentSorting(query, sort)
 
-	var comments []CommentWithUserName
-	totalCount, err := utils.PaginateAndCount(c, query, &comments)
+	// Count
+	totalCount, err := utils.Count(query, "comments")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommnetFetchFail.String()})
 		return
 	}
 
+	// Paginate
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	var comments []CommentWithUserName
+	if err := utils.Paginate(query, limit, offset, &comments); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommnetFetchFail.String()})
+		return
+	}
+
 	c.JSON(http.StatusOK, CommentsResponse{
-		Message: messages.Common.Failed.String(),
+		Message: messages.Common.Success.String(),
 		Data:    comments,
 		Count:   totalCount,
 	})
@@ -468,15 +480,33 @@ func GetAllRecipesHandler(c *gin.Context) {
 		return
 	}
 
+	params := map[string]string{
+		"title":        c.Query("title"),
+		"ingredient":   c.Query("ingredient"),
+		"tag_ids":      c.Query("tag_ids"),
+		"category_ids": c.Query("category_ids"),
+		"user_id":      c.Query("user_id"),
+		"rating":       c.Query("rating"),
+	}
 	query := db.Model(&model.Recipe{}).Preload("Ingredients").Preload("Tags").Preload("Categories").Preload("Steps")
-	query = utils.ApplyRecipeFilters(query, c.QueryMap(""))
-	sort := c.Query("sort")
+	query = utils.ApplyRecipeFilters(query, params)
+	sort := c.Query("sortOrder")
+	fmt.Println("*********************************" + sort + "*********************************")
 	query = utils.ApplyRecipeSorting(query, sort)
 
 	var baseRecipes []model.Recipe
-	totalCount, err := utils.PaginateAndCount(c, query, &baseRecipes)
+	totalCount, err := utils.Count(query, "recipes")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
+		return
+	}
+
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+	if err := utils.Paginate(query, limit, offset, &baseRecipes); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
 
@@ -1031,13 +1061,21 @@ func SearchRecipesHandler(c *gin.Context) {
 		Preload("Ratings").
 		Preload("Ingredients")
 	query = utils.ApplyRecipeFilters(query, params)
-	query = utils.ApplyRecipeSorting(query, c.Query("sort"))
+	query = utils.ApplyRecipeSorting(query, c.Query("sortOrder"))
 
 	// Use PaginateAndCount for pagination and counting
 	var recipes []model.Recipe
-	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
+	totalCount, err := utils.Count(query, "recipes")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.Failed.String()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
+		return
+	}
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+	if err := utils.Paginate(query, limit, offset, &recipes); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
 

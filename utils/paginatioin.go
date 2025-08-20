@@ -1,32 +1,26 @@
 package utils
 
 import (
-	"errors"
-
-	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func PaginateAndCount[T any](c *gin.Context, query *gorm.DB, result *[]T) (int64, error) {
-	limit, offset, err := ValidateOffLimit(c.Query("limit"), c.Query("offset"))
-	if err != nil && !errors.Is(err, errors.New("invalid limit and offset values")) {
+func Count(query *gorm.DB, primaryTable string) (int64, error) {
+	var total int64
+
+	countQuery := query.Session(&gorm.Session{})
+
+	// Use qualified id for counting
+	countQuery = countQuery.Select(primaryTable + ".id")
+
+	// Remove ORDER BY for counting
+	delete(countQuery.Statement.Clauses, "ORDER BY")
+
+	if err := countQuery.Count(&total).Error; err != nil {
 		return 0, err
 	}
-	if limit == 0 {
-		limit = 10
-	}
+	return total, nil
+}
 
-	var totalCount int64
-	countQuery := query.Session(&gorm.Session{}).Select("recipes.id")
-	if err := countQuery.Count(&totalCount).Error; err != nil {
-		return 0, err
-	}
-
-	paginatedQuery := query.Limit(limit).Offset(offset)
-
-	if err := paginatedQuery.Find(result).Error; err != nil {
-		return 0, err
-	}
-
-	return totalCount, nil
+func Paginate[T any](query *gorm.DB, limit, offset int, result *[]T) error {
+	return query.Limit(limit).Offset(offset * limit).Find(result).Error
 }
