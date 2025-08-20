@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -43,31 +44,31 @@ func PostFavoriteHandler(c *gin.Context) {
 
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	// Check if recipe exists
 	if err := db.Select("id").First(&model.Recipe{}, req.RecipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
 	// Insert favorite only if not exists
 	favorite := model.Favorite{UserID: userID, RecipeID: req.RecipeID}
 	if err := db.FirstOrCreate(&favorite, model.Favorite{UserID: userID, RecipeID: req.RecipeID}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to add favorite"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Favorite.FavoriteAddFail.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, FavoriteResponse{
-		Message:    "favorite added successfully",
+		Message:    messages.Favorite.FavoriteAdded.String(),
 		FavoriteID: favorite.ID,
 	})
 }
@@ -86,14 +87,14 @@ func PostFavoriteHandler(c *gin.Context) {
 func DeleteFavoriteHandler(c *gin.Context) {
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	// Get logged-in user ID from context (set by your auth middleware)
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
@@ -114,19 +115,19 @@ func DeleteFavoriteHandler(c *gin.Context) {
 	var favorite model.Favorite
 	if err := db.Where("user_id = ? AND recipe_id = ?", userID, recipeID).First(&favorite).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "favorite not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Favorite.FavoriteNotFound.String()})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query favorite"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Favorite.FavoriteRemoveQueryFail.String()})
 		}
 		return
 	}
 
 	// Delete the favorite
 	if err := db.Delete(&favorite).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove favorite"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Favorite.FavoriteRemoveFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "recipe unfavorited successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": messages.Favorite.FavoriteRemoved.String()})
 
 }
