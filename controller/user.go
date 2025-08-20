@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -116,13 +117,13 @@ type UserProfileResponse struct {
 func GetUserProfile(c *gin.Context) {
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to database"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -172,7 +173,7 @@ func GetUserProfile(c *gin.Context) {
 	`, userID, userID, userID, userID, userID, userID, userID, userID, userID).Scan(&stats).Error
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch stats"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.User.UserStatFetchFail.String()})
 		return
 	}
 
@@ -236,14 +237,14 @@ func GetUserRecipesHandler(c *gin.Context) {
 	// ✅ Get userID from JWT middleware
 	userIDValue, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "user not authenticated"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 	userID := userIDValue.(uint)
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -252,12 +253,12 @@ func GetUserRecipesHandler(c *gin.Context) {
 	var recipes []model.Recipe
 	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve recipes"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserRecipesResponse{
-		Message: "recipes retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    recipes,
 		Count:   totalCount,
 	})
@@ -277,14 +278,14 @@ func GetUserRecipesHandler(c *gin.Context) {
 func GetUserFavoritesHandler(c *gin.Context) {
 	userIDValue, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "user not authenticated"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 	userID := userIDValue.(uint)
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -296,12 +297,12 @@ func GetUserFavoritesHandler(c *gin.Context) {
 	var favorites []FavoriteWithTitle
 	totalCount, err := utils.PaginateAndCount(c, query, &favorites)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve favorites"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Favorite.FavoriteFailed.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserFavoritesResponse{
-		Message: "favorites retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    favorites,
 		Count:   totalCount,
 	})
@@ -321,14 +322,14 @@ func GetUserFavoritesHandler(c *gin.Context) {
 func GetUserRatingsHandler(c *gin.Context) {
 	userIDValue, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "user not authenticated"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 	userID := userIDValue.(uint)
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -337,12 +338,12 @@ func GetUserRatingsHandler(c *gin.Context) {
 	var ratings []model.Rating
 	totalCount, err := utils.PaginateAndCount(c, query, &ratings)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve ratings"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserRatingsResponse{
-		Message: "ratings retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    ratings,
 		Count:   totalCount,
 	})

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -53,20 +54,20 @@ func GetCategoryHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&category, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "record not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
-	c.JSON(http.StatusOK, CategoryResponse{Message: "successful", Data: category})
+	c.JSON(http.StatusOK, CategoryResponse{Message: messages.Common.Success.String(), Data: category})
 }
 
 // PostCategoryHandler godoc
@@ -91,18 +92,18 @@ func PostCategoryHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "database connection error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var existingCategory model.Category
 	if err := db.Where("name = ?", category.Name).First(&existingCategory).Error; err == nil {
-		c.JSON(http.StatusConflict, ErrorResponse{Error: "category already exists"})
+		c.JSON(http.StatusConflict, ErrorResponse{Error: messages.Category.CatAlreadyExists.String()})
 		return
 	}
 
 	if err := db.Create(&category).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "could not create category"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatCreationFailed.String()})
 		return
 	}
 
@@ -115,7 +116,7 @@ func PostCategoryHandler(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, CategoryResponse{Message: "category created", Data: category})
+	c.JSON(http.StatusCreated, CategoryResponse{Message: messages.Category.CatCreationOk.String(), Data: category})
 }
 
 // GetAllCategoriesHandler godoc
@@ -150,7 +151,7 @@ func GetAllCategoriesHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -162,12 +163,12 @@ func GetAllCategoriesHandler(c *gin.Context) {
 	// Use modular func: Validates, counts, paginates, fetches.
 	totalCount, err := utils.PaginateAndCount(c, query, &categories)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve categories " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatFetchFailed.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, CategoriesResponse{
-		Message: "categories retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    categories,
 		Count:   totalCount, // Now guaranteed.
 	})
@@ -201,23 +202,23 @@ func PutCategoryHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "DB connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var existing model.Category
 	if err := db.First(&existing, categoryID).Error; err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "category not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Category.CatNotFound.String()})
 		return
 	}
 
 	existing.Name = category.Name
 	if err := db.Save(&existing).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to update category"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatUpdateFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, CategoryResponse{Message: "category updated", Data: existing})
+	c.JSON(http.StatusOK, CategoryResponse{Message: messages.Category.CatUpdateOk.String(), Data: existing})
 }
 
 // DeleteCategoryHandler godoc
@@ -235,24 +236,24 @@ func DeleteCategoryHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "database connection error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	if err := db.Preload("Recipes").First(&category, categoryID).Error; err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "category not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Category.CatNotFound.String()})
 		return
 	}
 
 	if err := db.Model(&category).Association("Recipes").Clear(); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to remove category associations"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatFailedAssocioationRemova.String()})
 		return
 	}
 
 	if err := db.Delete(&category).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete category"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatDeletionFaied.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessMessageResponse{Message: "category deleted successfully"})
+	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Category.CatDeletionOk.String()})
 }

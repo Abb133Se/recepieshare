@@ -10,6 +10,7 @@ import (
 
 func AddRoutes(r *gin.Engine) {
 	public := r.Group("/")
+	public.Use(middleware.SetLanguage())
 	{
 		// Recipe read endpoints
 		public.GET("/recipe/:id", middleware.ExtractUserFromToken(), controller.GetRecipeHandler)
@@ -45,6 +46,7 @@ func AddRoutes(r *gin.Engine) {
 
 	protected := r.Group("/")
 	protected.Use(middleware.AuthenticatJWT())
+	protected.Use(middleware.SetLanguage())
 	{
 		// Recipe management
 		protected.POST("/recipe", controller.PostRecipeHandler)

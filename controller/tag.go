@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -44,20 +45,20 @@ func GetTagHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&tag, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Tag.TagNotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
-	c.JSON(http.StatusOK, TagResponse{Message: "successful", Data: tag})
+	c.JSON(http.StatusOK, TagResponse{Message: messages.Common.Success.String(), Data: tag})
 }
 
 // PostTagHandler godoc
@@ -82,18 +83,18 @@ func PostTagHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var existingTag model.Tag
 	if err := db.Where("name = ?", tag.Name).First(&existingTag).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "tag already exists"})
+		c.JSON(http.StatusConflict, ErrorResponse{Error: messages.Tag.TagAlreadyExists.String()})
 		return
 	}
 
 	if err := db.Create(&tag).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create tag"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Tag.TagCreationFailed.String()})
 		return
 	}
 
@@ -106,7 +107,7 @@ func PostTagHandler(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, TagResponse{Message: "tag created", Data: tag})
+	c.JSON(http.StatusCreated, TagResponse{Message: messages.Tag.TagCreationOk.String(), Data: tag})
 }
 
 // GetAllTagsHandler godoc
@@ -138,7 +139,7 @@ func GetAllTagsHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -148,12 +149,12 @@ func GetAllTagsHandler(c *gin.Context) {
 	}
 
 	if err := query.Find(&tags).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve tags"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Tag.TagFetchFailed.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, TagsListResponse{
-		Message: "tags retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    tags,
 		Count:   int64(len(tags)),
 	})
@@ -187,23 +188,23 @@ func PutTagHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var existing model.Tag
 	if err := db.First(&existing, tagID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "tag not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Tag.TagNotFound.String()})
 		return
 	}
 
 	existing.Name = tag.Name
 	if err := db.Save(&existing).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update tag"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Tag.TagUploadFailed.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, TagResponse{Message: "tag updated", Data: existing})
+	c.JSON(http.StatusOK, TagResponse{Message: messages.Tag.TagUploadOK.String(), Data: existing})
 }
 
 // DeleteTagHandler godoc
@@ -222,24 +223,24 @@ func DeleteTagHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	if err := db.Preload("Recipes").First(&tag, tagID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "tag not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Tag.TagNotFound.String()})
 		return
 	}
 
 	if err := db.Model(&tag).Association("Recipes").Clear(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove tag associations"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Tag.TagFailedAssocioationRemova.String()})
 		return
 	}
 
 	if err := db.Delete(&tag).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete tag"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Tag.TagDeletionFaied.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "tag deleted successfully"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: messages.Tag.TagDeletionOk.String()})
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -47,21 +48,21 @@ func GetIngredientHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&ingredient, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "record not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Common.NotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 	c.JSON(http.StatusOK, IngredientResponse{
-		Message: "successful",
+		Message: messages.Common.Success.String(),
 		Data:    ingredient,
 	})
 }
@@ -84,7 +85,7 @@ func PostIngredientHandler(c *gin.Context) {
 
 	err := c.BindJSON(&ingredient)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "bad request"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: messages.Common.BadRequest.String()})
 		return
 	}
 
@@ -104,28 +105,28 @@ func PostIngredientHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&recipe, ingredient.RecipeID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.Create(&ingredient).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to create ingredient"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.Failed.String()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, IngredientCreateResponse{
-		Message: "record successfully inserted",
+		Message: messages.Common.Success.String(),
 		ID:      ingredient.ID,
 	})
 }
@@ -153,21 +154,21 @@ func DeleteIngredientHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&ingredient, validID).Error
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Common.NotFound.String()})
 		return
 	}
 
 	err = db.Delete(&model.Ingredient{}, validID).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete record"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.Failed.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessMessageResponse{Message: "record deleted successfully"})
+	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Common.Success.String()})
 }

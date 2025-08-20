@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -51,19 +52,19 @@ func PostRatingHandler(c *gin.Context) {
 
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var recipe model.Recipe
 	if err := db.First(&recipe, req.RecipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
@@ -72,20 +73,20 @@ func PostRatingHandler(c *gin.Context) {
 		First(&existing).Error; err == nil {
 		existing.Score = req.Score
 		if err := db.Save(&existing).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to update rating"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingUpdateFailed.String()})
 			return
 		}
-		c.JSON(http.StatusOK, RatingResponse{Message: "rating updated successfully", ID: existing.ID})
+		c.JSON(http.StatusOK, RatingResponse{Message: messages.Rating.RatingUpdated.String(), ID: existing.ID})
 		return
 	}
 
 	rating := model.Rating{UserID: userID, RecipeID: req.RecipeID, Score: req.Score}
 	if err := db.Create(&rating).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to add rating"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingAddFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, RatingResponse{Message: "rating added successfully", ID: rating.ID})
+	c.JSON(http.StatusOK, RatingResponse{Message: messages.Rating.RatingAdded.String(), ID: rating.ID})
 }
 
 // DeleteRatingHandler godoc
@@ -104,7 +105,7 @@ func PostRatingHandler(c *gin.Context) {
 func DeleteRatingHandler(c *gin.Context) {
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
@@ -116,26 +117,26 @@ func DeleteRatingHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var rating model.Rating
 	if err := db.Where("id = ? AND user_id = ?", ratingID, userID).First(&rating).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusForbidden, ErrorResponse{Error: "not allowed to delete this rating"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: messages.Rating.RatingDeleteForbidden.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch rating data"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
 
 	if err := db.Delete(&rating).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete rating"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingDeleteFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessMessageResponse{Message: "rating deleted successfully"})
+	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Rating.RatingDeleted.String()})
 }
 
 // GetAverageRatingHandler godoc
@@ -159,19 +160,19 @@ func GetAverageRatingHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.Where("recipe_id = ?", validID).Find(&ratings).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch ratings"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
 
 	if len(ratings) == 0 {
 		c.JSON(http.StatusNotFound, ErrorResponse{
-			Error: "no ratings found for the given recipe",
+			Error: messages.Rating.RatingNotFound.String(),
 		})
 		return
 	}
@@ -219,35 +220,35 @@ func PutUpdateRatingHandler(c *gin.Context) {
 	}
 
 	if rating.Score < 1 || rating.Score > 5 {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "rating score must be between 1 and 5"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: messages.Rating.RatingInvalidScore.String()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&existingRating, validId).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, ErrorResponse{Error: "rating not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Rating.RatingNotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch rating"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
 
 	existingRating.Score = rating.Score
 	err = db.Save(&existingRating).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to update rating"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingUpdateFailed.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, RatingResponse{
-		Message: "rating updated successfully",
+		Message: messages.Rating.RatingUpdated.String(),
 		ID:      existingRating.ID,
 	})
 }

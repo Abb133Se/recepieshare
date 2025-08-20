@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/service"
 	"github.com/Abb133Se/recepieshare/utils"
@@ -133,7 +134,7 @@ func GetRecipeHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -147,10 +148,10 @@ func GetRecipeHandler(c *gin.Context) {
 		First(&recipe, validID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch recipe"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -219,13 +220,13 @@ func PostRecipeHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var user model.User
 	if err := db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user not found"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: messages.User.UserNotFound.String()})
 		return
 	}
 
@@ -260,7 +261,7 @@ func PostRecipeHandler(c *gin.Context) {
 	}
 
 	if err := db.Create(&recipe).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create recipe"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeCreateFailed.String()})
 		return
 	}
 
@@ -299,7 +300,7 @@ func PostRecipeHandler(c *gin.Context) {
 func DeleteRecipeHandler(c *gin.Context) {
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
@@ -311,7 +312,7 @@ func DeleteRecipeHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "database error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -319,10 +320,10 @@ func DeleteRecipeHandler(c *gin.Context) {
 	if err := db.Where("id = ? AND user_id = ?", recipeID, userID).
 		First(&recipe).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusForbidden, ErrorResponse{Error: "not allowed to delete this recipe"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: messages.Recipe.RecipeDeleteForbidden.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch recipe"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -332,11 +333,11 @@ func DeleteRecipeHandler(c *gin.Context) {
 
 	// Delete recipe (cascade takes care of children)
 	if err := db.Delete(&recipe).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete recipe"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeDeleteFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "recipe and its associations deleted successfully"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: messages.Recipe.RecipeDeleted.String()})
 }
 
 // GetAllRecipeIngredientHandler godoc
@@ -361,29 +362,29 @@ func GetAllRecipeIngredientHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	err = db.First(&model.Recipe{}, validID).Error
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "recipe does not exist"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
 	err = db.Model(&model.Ingredient{}).Where("recipe_id = ?", c.Param("id")).Find(&Ingredient).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve Ingredient from server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeIngredientsFetchFail.String()})
 		return
 	}
 
 	if len(Ingredient) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "recipe does not have Ingredient"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeHasNoIngredient.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, IngredientsResponse{
-		Message: "Ingredient successfully retrieved",
+		Message: messages.Common.Success.String(),
 		Data:    Ingredient,
 	})
 
@@ -412,13 +413,13 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var recipe model.Recipe
 	if err := db.First(&recipe, validID).Error; err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
@@ -432,12 +433,12 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 	var comments []CommentWithUserName
 	totalCount, err := utils.PaginateAndCount(c, query, &comments)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to retrieve comments"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommnetFetchFail.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, CommentsResponse{
-		Message: "comments retrieved successfully",
+		Message: messages.Comment.CommentLikeSuccess.String(),
 		Data:    comments,
 		Count:   totalCount,
 	})
@@ -463,7 +464,7 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 func GetAllRecipesHandler(c *gin.Context) {
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -475,7 +476,7 @@ func GetAllRecipesHandler(c *gin.Context) {
 	var baseRecipes []model.Recipe
 	totalCount, err := utils.PaginateAndCount(c, query, &baseRecipes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve recipes"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -498,7 +499,7 @@ func GetAllRecipesHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
-		Message: "recipes retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    responseData,
 		Count:   totalCount,
 	})
@@ -542,7 +543,7 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, SimpleMessageResponse{Message: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -550,10 +551,10 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		Preload("Tags").Preload("Categories").
 		First(&recipe, validID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, SimpleMessageResponse{Message: "recipe not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, SimpleMessageResponse{Message: "failed to fetch recipe"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -618,11 +619,11 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, SimpleMessageResponse{Message: "couldn't update recipe: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeUpdateFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "recipe updated successfully"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: messages.Recipe.RecipeUpdated.String()})
 }
 
 // GetTopRatedRecipesHandler godoc
@@ -649,7 +650,7 @@ func GetTopRatedRecipesHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -662,7 +663,7 @@ func GetTopRatedRecipesHandler(c *gin.Context) {
 		Offset(offset).
 		Scan(&results).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch top rated recipes"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -694,7 +695,7 @@ func GetMostPopularRecipesHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -707,7 +708,7 @@ func GetMostPopularRecipesHandler(c *gin.Context) {
 		Offset(offset).
 		Scan(&results).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "faild to fetch popular recipes"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -734,13 +735,13 @@ func GetRecipeNutritionHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var ingredients []model.Ingredient
 	if err := db.Where("recipe_id = ?", recipeID).Find(&ingredients).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch ingredients"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeIngredientsFetchFail.String()})
 		return
 	}
 
@@ -751,7 +752,7 @@ func GetRecipeNutritionHandler(c *gin.Context) {
 
 	nutritionData, err := utils.EstimateNutrition(API_KEY, ingredientStrings)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI model inference failed", "details": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeNutritionFail.String()})
 		return
 	}
 
@@ -777,7 +778,7 @@ func GetRecipeTagsHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -785,9 +786,9 @@ func GetRecipeTagsHandler(c *gin.Context) {
 	err = db.Preload("Tags").First(&recipe, recipeID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not retrieve recipe tags"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeTagFetchFail.String()})
 		}
 		return
 	}
@@ -822,13 +823,13 @@ func PutRecipeTagsHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var recipe model.Recipe
 	if err := db.Preload("Tags").First(&recipe, recipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
 
@@ -845,11 +846,11 @@ func PutRecipeTagsHandler(c *gin.Context) {
 			if err == gorm.ErrRecordNotFound {
 				tag = model.Tag{Name: tagName}
 				if err := db.Create(&tag).Error; err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tag: " + tagName})
+					c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeTagCreateFail.String()})
 					return
 				}
 			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tag: " + tagName})
+				c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeTagQueryFail.String()})
 				return
 			}
 		}
@@ -857,11 +858,11 @@ func PutRecipeTagsHandler(c *gin.Context) {
 	}
 
 	if err := db.Model(&recipe).Association("Tags").Replace(tags); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update recipe tags"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeTagUpdateFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "recipe tags updated", "tags": tags})
+	c.JSON(http.StatusOK, gin.H{"message": ErrorResponse{Error: messages.Recipe.RecipeTagUpdated.String()}, "tags": tags})
 }
 
 // DeleteRecipeTagsHandler godoc
@@ -884,22 +885,22 @@ func DeleteRecipeTagsHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var recipe model.Recipe
 	if err := db.Preload("Tags").First(&recipe, recipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
 	if err := db.Model(&recipe).Association("Tags").Clear(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear tags"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeTagsDeleteFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "tags removed from recipe"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: messages.Recipe.ReciepTagsDeleted.String()})
 }
 
 // GetRecipeCategoriesHandler godoc
@@ -931,7 +932,7 @@ func GetRecipeCategoriesHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -939,9 +940,9 @@ func GetRecipeCategoriesHandler(c *gin.Context) {
 	err = db.Preload("Categories").First(&recipe, recipeID).Limit(limit).Offset(offset).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not retrieve recipe categories"})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeCatsFetcFail.String()})
 		}
 		return
 	}
@@ -969,22 +970,22 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB connection failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var recipe model.Recipe
 	if err := db.Preload("Categories").First(&recipe, recipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
 	if err := db.Model(&recipe).Association("Categories").Clear(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear categories"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeCatsDeleteFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SimpleMessageResponse{Message: "categories removed from recipe"})
+	c.JSON(http.StatusOK, SimpleMessageResponse{Message: messages.Recipe.RecipeCatsDeleted.String()})
 }
 
 // SearchRecipesHandler godoc
@@ -1017,7 +1018,7 @@ func SearchRecipesHandler(c *gin.Context) {
 	// Initialize DB
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
@@ -1033,7 +1034,7 @@ func SearchRecipesHandler(c *gin.Context) {
 	var recipes []model.Recipe
 	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "search failed"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.Failed.String()})
 		return
 	}
 
@@ -1056,7 +1057,7 @@ func SearchRecipesHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
-		Message: "recipes retrieved successfully",
+		Message: messages.Common.Success.String(),
 		Data:    recipesWithImages,
 		Count:   totalCount, // Added to include total count
 	})

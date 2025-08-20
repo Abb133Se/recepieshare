@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -46,26 +47,26 @@ func PostCommentHandler(c *gin.Context) {
 
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var recipe model.Recipe
 	if err := db.First(&recipe, req.RecipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 
 	var existingComment model.Comment
 	if err := db.Where("user_id = ? AND recipe_id = ?", userID, req.RecipeID).
 		First(&existingComment).Error; err == nil {
-		c.JSON(http.StatusConflict, ErrorResponse{Error: "you have already commented on this recipe"})
+		c.JSON(http.StatusConflict, ErrorResponse{Error: messages.Comment.CommentAlreadyExists.String()})
 		return
 	}
 
@@ -76,12 +77,12 @@ func PostCommentHandler(c *gin.Context) {
 		UserID:      userID,
 	}
 	if err := db.Create(&comment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to create comment"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommentPostFail.String()})
 		return
 	}
 
 	c.JSON(http.StatusOK, CommentResponse{
-		Message: "comment successfully posted",
+		Message: messages.Comment.CommentPosted.String(),
 		ID:      comment.ID,
 	})
 }
@@ -102,7 +103,7 @@ func PostCommentHandler(c *gin.Context) {
 func DeleteCommentHandler(c *gin.Context) {
 	userID := c.GetUint("userID")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
@@ -114,26 +115,26 @@ func DeleteCommentHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to server"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	var comment model.Comment
 	if err := db.Where("id = ? AND user_id = ?", commentID, userID).First(&comment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusForbidden, ErrorResponse{Error: "not allowed to delete this comment"})
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: messages.Comment.CommentDeleteForbidden.String()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	if err := db.Delete(&comment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to delete comment"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommentDeleteFail.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessMessageResponse{Message: "comment deleted successfully"})
+	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Comment.CommentDeleted.String()})
 }
 
 // PostCommentLikeIncHandler godoc
@@ -155,21 +156,21 @@ func PostCommentLikeIncHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	result := db.Exec("update comments set likes = likes + 1 where id = ?", commentID)
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to like comment"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommentLikeFail.String()})
 		return
 	}
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "comment not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Comment.CommentNotFound.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessMessageResponse{Message: "comment liked successfully"})
+	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Comment.CommentLikeSuccess.String()})
 }
 
 // PostCommentLikeDecHandler godoc
@@ -191,19 +192,19 @@ func PostCommentLikeDecHandler(c *gin.Context) {
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to connect to db"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
 	result := db.Exec("update comments set likes = likes - 1 where id = ?", commentID)
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to dislike comment"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommentDislikeFail.String()})
 		return
 	}
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "comment not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Comment.CommentNotFound.String()})
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessMessageResponse{Message: "comment disliked successfully"})
+	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Comment.CommentDislikeSuccess.String()})
 }

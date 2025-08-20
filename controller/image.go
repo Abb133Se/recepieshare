@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/messages"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/service"
 	"github.com/Abb133Se/recepieshare/utils"
@@ -35,11 +36,11 @@ func PostUploadRecipeImageHandler(c *gin.Context) {
 	db, _ := internal.GetGormInstance()
 	var recipe model.Recipe
 	if err := db.First(&recipe, recipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 	if recipe.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized to upload image for this recipe"})
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
@@ -102,11 +103,11 @@ func DeleteRecipeImageHandler(c *gin.Context) {
 	db, _ := internal.GetGormInstance()
 	var recipe model.Recipe
 	if err := db.First(&recipe, recipeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: messages.Recipe.RecipeNotFound.String()})
 		return
 	}
 	if recipe.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized to delete image for this recipe"})
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: messages.Common.Unauthorized.String()})
 		return
 	}
 
@@ -114,7 +115,7 @@ func DeleteRecipeImageHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "image deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": messages.Image.ImageDeleted})
 }
 
 // PostUploadUserProfileImageHandler godoc
@@ -178,7 +179,7 @@ func DeleteUserProfileImageHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "profile image deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": messages.Image.ImageDeleted.String()})
 }
 
 // GetImageHandler godoc
