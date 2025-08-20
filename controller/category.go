@@ -161,16 +161,32 @@ func GetAllCategoriesHandler(c *gin.Context) {
 	}
 
 	// Use modular func: Validates, counts, paginates, fetches.
-	totalCount, err := utils.PaginateAndCount(c, query, &categories)
+	queryCount, err := utils.Count(query, "categories")
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommnetFetchFail.String()})
+		return
+	}
+
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	if err := utils.Paginate(query, limit, offset, &categories); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatFetchFailed.String()})
 		return
 	}
 
+	// totalCount, err := utils.PaginateAndCount(c, query, &categories)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatFetchFailed.String()})
+	// 	return
+	// }
+
 	c.JSON(http.StatusOK, CategoriesResponse{
 		Message: messages.Common.Success.String(),
 		Data:    categories,
-		Count:   totalCount, // Now guaranteed.
+		Count:   queryCount, // Now guaranteed.
 	})
 }
 

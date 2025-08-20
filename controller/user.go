@@ -250,9 +250,20 @@ func GetUserRecipesHandler(c *gin.Context) {
 
 	query := db.Model(&model.Recipe{}).Where("user_id = ?", userID)
 
-	var recipes []model.Recipe
-	totalCount, err := utils.PaginateAndCount(c, query, &recipes)
+	totalCount, err := utils.Count(query, "recipes")
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
+		return
+	}
+
+	// Paginate
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	var recipes []model.Recipe
+	if err := utils.Paginate(query, limit, offset, &recipes); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeFetchFail.String()})
 		return
 	}
@@ -294,9 +305,20 @@ func GetUserFavoritesHandler(c *gin.Context) {
 		Joins("JOIN recipes ON favorites.recipe_id = recipes.id").
 		Where("favorites.user_id = ?", userID)
 
-	var favorites []FavoriteWithTitle
-	totalCount, err := utils.PaginateAndCount(c, query, &favorites)
+	totalCount, err := utils.Count(query, "favorites")
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Favorite.FavoriteFailed.String()})
+		return
+	}
+
+	// Paginate
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	var favorites []FavoriteWithTitle
+	if err := utils.Paginate(query, limit, offset, &favorites); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Favorite.FavoriteFailed.String()})
 		return
 	}
@@ -335,9 +357,20 @@ func GetUserRatingsHandler(c *gin.Context) {
 
 	query := db.Model(&model.Rating{}).Where("user_id = ?", userID)
 
-	var ratings []model.Rating
-	totalCount, err := utils.PaginateAndCount(c, query, &ratings)
+	totalCount, err := utils.Count(query, "ratings")
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
+		return
+	}
+
+	// Paginate
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	var ratings []model.Rating
+	if err := utils.Paginate(query, limit, offset, &ratings); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Rating.RatingFetchFail.String()})
 		return
 	}
