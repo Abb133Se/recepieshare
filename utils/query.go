@@ -23,19 +23,23 @@ func ParseUintSlice(s string) []uint {
 
 func ApplyRecipeFilters(query *gorm.DB, params map[string]string) *gorm.DB {
 	if title, ok := params["title"]; ok && title != "" {
-		query = query.Where("title LIKE ?", "%"+title+"%")
+		query = query.Where("LOWER(title) LIKE ?", "%"+strings.ToLower(title)+"%")
 	}
 
 	if ingredient, ok := params["ingredient"]; ok && ingredient != "" {
-		query = query.Joins("JOIN ingredients ON ingredients.recipe_id = recipes.id").
-			Where("ingredients.name LIKE ?", "%"+ingredient+"%")
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM ingredients WHERE ingredients.recipe_id = recipes.id AND LOWER(ingredients.name) LIKE ?)",
+			"%"+strings.ToLower(ingredient)+"%",
+		)
 	}
 
 	if tagIDsStr, ok := params["tag_ids"]; ok && tagIDsStr != "" {
 		tagIDs := ParseUintSlice(tagIDsStr)
 		if len(tagIDs) > 0 {
-			query = query.Joins("JOIN recipe_tags ON recipe_tags.recipe_id = recipes.id").
-				Where("recipe_tags.tag_id IN ?", tagIDs)
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM recipe_tags WHERE recipe_tags.recipe_id = recipes.id AND recipe_tags.tag_id IN ?)",
+				tagIDs,
+			)
 		}
 	}
 
@@ -53,7 +57,9 @@ func ApplyRecipeFilters(query *gorm.DB, params map[string]string) *gorm.DB {
 		}
 	}
 
-	return query
+	// Ensure unique recipes when joins are applied
+	return query.Select("recipes.*").Group("recipes.id")
+
 }
 
 func ApplyRecipeSorting(query *gorm.DB, sortParam string) *gorm.DB {
@@ -67,11 +73,13 @@ func ApplyRecipeSorting(query *gorm.DB, sortParam string) *gorm.DB {
 	case "created_desc":
 		return query.Order("created_at DESC")
 	case "rating_desc":
-		return query.Joins("LEFT JOIN ratings ON ratings.recipe_id = recipes.id").
+		return query.Select("recipes.*").
+			Joins("LEFT JOIN ratings ON ratings.recipe_id = recipes.id").
 			Group("recipes.id").
 			Order("AVG(ratings.score) DESC")
 	case "favorites_desc":
-		return query.Joins("LEFT JOIN favorites ON favorites.recipe_id = recipes.id").
+		return query.Select("recipes.*").
+			Joins("LEFT JOIN favorites ON favorites.recipe_id = recipes.id").
 			Group("recipes.id").
 			Order("COUNT(favorites.id) DESC")
 	default:
