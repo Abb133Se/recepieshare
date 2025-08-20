@@ -17,7 +17,8 @@ func PaginateAndCount[T any](c *gin.Context, query *gorm.DB, result *[]T) (int64
 	}
 
 	var totalCount int64
-	if err := query.Count(&totalCount).Error; err != nil {
+	countQuery := query.Session(&gorm.Session{}).Select("recipes.id")
+	if err := countQuery.Count(&totalCount).Error; err != nil {
 		return 0, err
 	}
 

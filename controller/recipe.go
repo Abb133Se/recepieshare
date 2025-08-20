@@ -18,7 +18,7 @@ import (
 type TopRatedRecipe struct {
 	RecipeID   uint    `json:"recipe_id"`
 	Title      string  `json:"title"`
-	Average    float64 `joson:"average"`
+	Average    float64 `json:"average"`
 	TotalVotes int64   `json:"total_votes"`
 }
 
@@ -438,7 +438,7 @@ func GetAllRecipeCommentsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, CommentsResponse{
-		Message: messages.Comment.CommentLikeSuccess.String(),
+		Message: messages.Common.Failed.String(),
 		Data:    comments,
 		Count:   totalCount,
 	})
@@ -862,7 +862,7 @@ func PutRecipeTagsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": ErrorResponse{Error: messages.Recipe.RecipeTagUpdated.String()}, "tags": tags})
+	c.JSON(http.StatusOK, gin.H{"message": messages.Recipe.RecipeTagUpdated.String(), "tags": tags})
 }
 
 // DeleteRecipeTagsHandler godoc
@@ -1013,6 +1013,7 @@ func SearchRecipesHandler(c *gin.Context) {
 		"tag_ids":      c.Query("tag_ids"),
 		"category_ids": c.Query("category_ids"),
 		"user_id":      c.Query("user_id"),
+		"rating":       c.Query("rating"),
 	}
 
 	// Initialize DB
@@ -1026,7 +1027,9 @@ func SearchRecipesHandler(c *gin.Context) {
 	query := db.Model(&model.Recipe{}).
 		Preload("Tags").
 		Preload("Categories").
-		Preload("User")
+		Preload("User").
+		Preload("Ratings").
+		Preload("Ingredients")
 	query = utils.ApplyRecipeFilters(query, params)
 	query = utils.ApplyRecipeSorting(query, c.Query("sort"))
 
