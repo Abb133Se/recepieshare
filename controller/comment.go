@@ -6,6 +6,7 @@ import (
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/messages"
+	"github.com/Abb133Se/recepieshare/middleware"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,17 @@ type PostCommentRequest struct {
 	Title       string `json:"title" binding:"required"`
 	Description string `json:"description" binding:"required"`
 	RecipeID    uint   `json:"recipe_id" binding:"required"`
+}
+
+type CommentWithDetails struct {
+	CommentID    uint   `json:"comment_id"`
+	CommentTitle string `json:"comment_title"`
+	RecipeID     uint   `json:"recipe_id"`
+	RecipeTitle  string `json:"recipe_title"`
+	UserID       uint   `json:"user_id"`
+	UserName     string `json:"user_name"`
+	Likes        int    `json:"likes"`
+	CreatedAt    string `json:"created_at"`
 }
 
 // PostCommentHandler godoc
@@ -100,11 +112,36 @@ func PostCommentHandler(c *gin.Context) {
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /comment/{id} [delete]
+
+// DeleteCommentHandler (admin route) godoc
+// @Summary      Delete a comment (admin)
+// @Description  Admin deletes a comment of any user
+// @Tags         comments
+// @Security     BearerAuth
+// @Param        userID path int true "User ID"
+// @Param        id     path int true "Comment ID"
+// @Success      200 {object} controller.SuccessMessageResponse
+// @Failure      400 {object} controller.ErrorResponse
+// @Failure      401 {object} controller.ErrorResponse
+// @Failure      403 {object} controller.ErrorResponse
+// @Failure      404 {object} controller.ErrorResponse
+// @Failure      500 {object} controller.ErrorResponse
+// @Router       /admin/user/{userID}/comment/{id} [delete]
 func DeleteCommentHandler(c *gin.Context) {
-	userID := c.GetUint("userID")
-	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
-		return
+	var userID uint
+	var err error
+	if role := c.GetString("role"); role == "user" {
+		userID = c.GetUint("userID")
+		if userID == 0 {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
+			return
+		}
+	} else if role == "admin" {
+		userID, err = middleware.GetEffectiveUserID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
+			return
+		}
 	}
 
 	commentID, err := utils.ValidateEntityID(c.Param("id"))
@@ -207,4 +244,49 @@ func PostCommentLikeDecHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, SuccessMessageResponse{Message: messages.Comment.CommentDislikeSuccess.String()})
+}
+
+func GetAllComments(c *gin.Context) {
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		return
+	}
+
+	sort := c.DefaultQuery("sortOrder", "date_desc")
+
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	query := db.Table("comments").
+		Select(`comments.id as comment_id, 
+                comments.title as comment_title, 
+				comments.likes as likes,
+                recipes.id as recipe_id, 
+                recipes.title as recipe_title, 
+                users.id as user_id, 
+                users.name as user_name`).
+		Joins("JOIN recipes ON comments.recipe_id = recipes.id").
+		Joins("JOIN users ON comments.user_id = users.id")
+
+	query = utils.ApplyCommentSorting(query, sort)
+
+	total, err := utils.Count(query, "comments")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to count comments"})
+		return
+	}
+
+	var comments []CommentWithDetails
+	if err := utils.Paginate(query, limit, offset, &comments); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch comments"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total":    total,
+		"comments": comments,
+	})
 }

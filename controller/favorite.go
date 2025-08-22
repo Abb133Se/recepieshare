@@ -6,7 +6,9 @@ import (
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/messages"
+	"github.com/Abb133Se/recepieshare/middleware"
 	"github.com/Abb133Se/recepieshare/model"
+	"github.com/Abb133Se/recepieshare/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -74,16 +76,31 @@ func PostFavoriteHandler(c *gin.Context) {
 }
 
 // DeleteFavoriteHandler godoc
-// @Summary      Remove a recipe from favorites
-// @Description  Unfavorites a recipe for the authenticated user using its recipe ID
+// @Summary      Delete a favorite
+// @Description  Deletes a favorite entry for the authenticated user
 // @Tags         favorites
-// @Produce      json
-// @Param        recipeId  path      int  true  "Recipe ID"
-// @Success      200   {object}  SimpleMessageResponse
-// @Failure      400   {object}  ErrorResponse
-// @Failure      404   {object}  ErrorResponse
-// @Failure      500   {object}  ErrorResponse
-// @Router       /unfavorite [delete]
+// @Security     BearerAuth
+// @Param        recipe_id  query     int  true  "Recipe ID to remove from favorites"
+// @Success      200  {object}  SuccessMessageResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /favorite [delete]
+
+// DeleteFavoriteHandler (admin route) godoc
+// @Summary      Delete a favorite (admin)
+// @Description  Admin removes a favorite of any user
+// @Tags         favorites
+// @Security     BearerAuth
+// @Param        userID    path int true "User ID"
+// @Param        favoriteID path int true "Favorite ID"
+// @Success      200 {object} controller.SuccessMessageResponse
+// @Failure      400 {object} controller.ErrorResponse
+// @Failure      401 {object} controller.ErrorResponse
+// @Failure      404 {object} controller.ErrorResponse
+// @Failure      500 {object} controller.ErrorResponse
+// @Router       /admin/user/{userID}/unfavorite/{favoriteID} [delete]
 func DeleteFavoriteHandler(c *gin.Context) {
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -92,12 +109,20 @@ func DeleteFavoriteHandler(c *gin.Context) {
 	}
 
 	// Get logged-in user ID from context (set by your auth middleware)
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
-		return
+	var userID uint
+	if role := c.GetString("role"); role == "user" {
+		userID = c.GetUint("userID")
+		if userID == 0 {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
+			return
+		}
+	} else if role == "admin" {
+		userID, err = middleware.GetEffectiveUserID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
+			return
+		}
 	}
-
 	// Get recipeId from request (query or body depending on design)
 	recipeIDParam := c.Query("recipe_id")
 	if recipeIDParam == "" {
@@ -130,4 +155,66 @@ func DeleteFavoriteHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": messages.Favorite.FavoriteRemoved.String()})
 
+}
+
+// GetAllFavorites godoc
+// @Summary      Get all favorites
+// @Description  Retrieve a paginated list of all favorites with user and recipe details
+// @Tags         favorites
+// @Security     BearerAuth
+// @Param        limit     query     int     false  "Number of items per page" default(10)
+// @Param        offset    query     int     false  "Pagination offset" default(0)
+// @Param        sortOrder query     string  false  "Sort order: date_asc, date_desc" default(date_desc)
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /favorites [get]
+func GetAllFavorites(c *gin.Context) {
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database connection failed"})
+		return
+	}
+
+	limit, offset, _ := utils.ValidateOffLimit(c.Query("limit"), c.Query("offset"))
+	if limit == 0 {
+		limit = 10
+	}
+
+	// Select favorites with user and recipe info
+	query := db.Table("favorites").
+		Select(`favorites.id as favorite_id, 
+                users.id as user_id, 
+                users.name as user_name,
+                recipes.id as recipe_id, 
+                recipes.title as recipe_title`).
+		Joins("JOIN users ON favorites.user_id = users.id").
+		Joins("JOIN recipes ON favorites.recipe_id = recipes.id")
+
+	// Count total favorites
+	total, err := utils.Count(query, "favorites")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to count favorites"})
+		return
+	}
+
+	// Fetch paginated results
+	var favorites []struct {
+		FavoriteID  uint   `json:"favorite_id"`
+		UserID      uint   `json:"user_id"`
+		UserName    string `json:"user_name"`
+		RecipeID    uint   `json:"recipe_id"`
+		RecipeTitle string `json:"recipe_title"`
+	}
+
+	if err := utils.Paginate(query, limit, offset, &favorites); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch favorites"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total":     total,
+		"favorites": favorites,
+	})
 }

@@ -103,6 +103,7 @@ func Signup(c *gin.Context) {
 		Email:    req.Email,
 		Password: hashedPassword,
 		Salt:     salt,
+		Role:     "user",
 	}
 
 	err = db.Create(&user).Error
@@ -162,7 +163,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	tokenStr, err := token.GenerateToken(user.ID, user.Email)
+	tokenStr, err := token.GenerateToken(user.ID, user.Email, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.User.GeneratTokenFail.String()})
 		return

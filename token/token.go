@@ -12,12 +12,13 @@ import (
 
 var secretKey = []byte("secret-key")
 
-func GenerateToken(userID uint, email string) (string, error) {
+func GenerateToken(userID uint, email string, role string) (string, error) {
 
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"email": email,
-		"exp":   time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+		"role":  role,
+		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -38,7 +39,6 @@ func VerifyToken(tokenString string) (jwt.MapClaims, error) {
 		return nil, err
 	}
 
-	// validate claims
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		exp, ok := claims["exp"].(float64)
 		if !ok {
