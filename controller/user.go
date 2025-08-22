@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/messages"
@@ -98,6 +99,16 @@ type UserProfileResponse struct {
 
 	// The user's recipe with the highest average rating (if exists)
 	HighestRated *RecipeSummary `json:"highest_rated_recipe,omitempty"`
+}
+
+type UserListResponse struct {
+	ID           uint         `json:"id"`
+	Name         string       `json:"name"`
+	LastName     string       `json:"last_name"`
+	Email        string       `json:"email"`
+	Role         string       `json:"role"`
+	ProfileImage *model.Image `json:"profile_image,omitempty"`
+	CreatedAt    time.Time    `json:"created_at"`
 }
 
 // GetUserProfile godoc
@@ -220,6 +231,57 @@ func GetUserProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func GetAllUsersHandler(c *gin.Context) {
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
+		return
+	}
+
+	// --- 1. Load all users without heavy preloads ---
+	var users []model.User
+	if err := db.Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// --- 2. Fetch profile images in one query ---
+	var images []model.Image
+	if err := db.Where("entity_type = ?", "user").Find(&images).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+	imageMap := make(map[uint]model.Image)
+	for _, img := range images {
+		imageMap[img.EntityID] = img
+	}
+
+	// --- 3. Build lightweight response ---
+	var response []UserListResponse
+	for _, u := range users {
+		resp := UserListResponse{
+			ID:        u.ID,
+			Name:      u.Name,
+			LastName:  u.LastName,
+			Email:     u.Email,
+			Role:      u.Role,
+			CreatedAt: u.CreatedAt,
+		}
+
+		if img, ok := imageMap[u.ID]; ok {
+			resp.ProfileImage = &img
+		}
+
+		response = append(response, resp)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "users fetched successfully",
+		"count":   len(response),
+		"data":    response,
+	})
 }
 
 // GetUserRecipesHandler godoc

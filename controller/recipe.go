@@ -8,6 +8,7 @@ import (
 
 	"github.com/Abb133Se/recepieshare/internal"
 	"github.com/Abb133Se/recepieshare/messages"
+	"github.com/Abb133Se/recepieshare/middleware"
 	"github.com/Abb133Se/recepieshare/model"
 	"github.com/Abb133Se/recepieshare/service"
 	"github.com/Abb133Se/recepieshare/utils"
@@ -297,11 +298,36 @@ func PostRecipeHandler(c *gin.Context) {
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /recipe/{id} [delete]
+
+// DeleteRecipeHandler (admin route) godoc
+// @Summary      Delete a recipe (admin)
+// @Description  Admin deletes a recipe of any user
+// @Tags         recipes
+// @Security     BearerAuth
+// @Param        userID path int true "User ID"
+// @Param        id     path int true "Recipe ID"
+// @Success      200 {object} controller.SimpleMessageResponse
+// @Failure      400 {object} controller.ErrorResponse
+// @Failure      401 {object} controller.ErrorResponse
+// @Failure      403 {object} controller.ErrorResponse
+// @Failure      404 {object} controller.ErrorResponse
+// @Failure      500 {object} controller.ErrorResponse
+// @Router       /admin/user/{userID}/recipe/{id} [delete]
 func DeleteRecipeHandler(c *gin.Context) {
-	userID := c.GetUint("userID")
-	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
-		return
+	var userID uint
+	var err error
+	if role := c.GetString("role"); role == "user" {
+		userID := c.GetUint("userID")
+		if userID == 0 {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
+			return
+		}
+	} else if role == "admin" {
+		userID, err = middleware.GetEffectiveUserID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Error: messages.Common.Unauthorized.String()})
+			return
+		}
 	}
 
 	recipeID, err := utils.ValidateEntityID(c.Param("id"))
@@ -491,7 +517,7 @@ func GetAllRecipesHandler(c *gin.Context) {
 	query := db.Model(&model.Recipe{}).Preload("Ingredients").Preload("Tags").Preload("Categories").Preload("Steps")
 	query = utils.ApplyRecipeFilters(query, params)
 	sort := c.Query("sortOrder")
-	fmt.Println("*********************************" + sort + "*********************************")
+
 	query = utils.ApplyRecipeSorting(query, sort)
 
 	var baseRecipes []model.Recipe

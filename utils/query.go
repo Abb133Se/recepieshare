@@ -86,17 +86,18 @@ func ApplyRecipeSorting(query *gorm.DB, sortParam string) *gorm.DB {
 		return query.Order("recipes.created_at DESC")
 	}
 }
+
 func ApplyCommentSorting(query *gorm.DB, sortParam string) *gorm.DB {
 	switch strings.ToLower(sortParam) {
 	case "likes_desc":
-		return query.Order("likes DESC")
+		return query.Order("comments.likes DESC")
 	case "likes_asc":
-		return query.Order("likes ASC")
+		return query.Order("comments.likes ASC")
 	case "date_asc":
-		return query.Order("created_at ASC")
+		return query.Order("comments.created_at ASC")
 	case "date_desc":
-		return query.Order("created_at DESC")
+		return query.Order("comments.created_at DESC")
 	default:
-		return query.Order("created_at DESC") // default sorting
+		return query.Order("comments.created_at DESC") // default sorting
 	}
 }

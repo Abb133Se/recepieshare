@@ -108,4 +108,48 @@ func AddRoutes(r *gin.Engine) {
 		// Generic image routes
 		protected.GET("/image/:entity/:entityId/:imageId", controller.GetImageHandler)
 	}
+
+	admin := r.Group("/admin")
+	admin.Use(middleware.AuthenticatJWT())
+	admin.Use(middleware.AdminOnly())
+	admin.Use(middleware.SetLanguage())
+	{
+		// Users routes
+		admin.GET("/users", controller.GetAllUsersHandler)
+		admin.GET("user/:id", controller.GetUserProfile)
+		admin.GET("/user/:id/recipes", controller.GetUserRecipesHandler)
+		admin.GET("/user/:id/favorites", controller.GetUserFavoritesHandler)
+		admin.GET("/user/:id/ratings", controller.GetUserRatingsHandler)
+
+		// Recipe routes
+		admin.GET("/recipe-list", controller.GetAllRecipesHandler)
+		admin.GET("/recipe/:id", controller.GetRecipeHandler)
+		admin.PUT("/recipe/:id", controller.PutRecipeUpdateHandler)
+		admin.DELETE("/user/:userID/recipe/:id", controller.DeleteRecipeHandler)
+
+		// Category routes
+		admin.GET("/categories", controller.GetAllCategoriesHandler)
+		admin.GET("category/:id", controller.GetCategoryHandler)
+		admin.POST("/category", controller.PostCategoryHandler)
+		admin.PUT("/category/:id", controller.PutCategoryHandler)
+		admin.DELETE("/category/:id", controller.DeleteCategoryHandler)
+
+		// Comments routes
+		admin.GET("/comments", controller.GetAllComments)
+		admin.DELETE("/user/:userID/comment/:id", controller.DeleteCommentHandler)
+
+		// Tags routes
+		admin.GET("/tags", controller.GetAllTagsHandler)
+		admin.POST("/tag", controller.PostTagHandler)
+		admin.PUT("/tag/:id", controller.PutTagHandler)
+		admin.DELETE("/tag/:id", controller.DeleteTagHandler)
+
+		// ratings routes
+		admin.GET("/ratings", controller.GetAllRatings)
+		admin.DELETE("/user/:userID/rating/:id", controller.DeleteRatingHandler)
+
+		// Favorites routes
+		admin.GET("/favorites", controller.GetAllFavorites)
+		admin.DELETE("/user/:userID/unfavorite/:id", controller.DeleteFavoriteHandler)
+	}
 }

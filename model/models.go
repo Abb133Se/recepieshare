@@ -44,6 +44,7 @@ type User struct {
 	Salt                   string     `json:"salt"`
 	Password               string     `json:"password"`
 	Email                  string     `json:"email"`
+	Role                   string     `gorm:"deafault:user" json:"role"`
 	PasswordResetToken     string     `json:"-" gorm:"size:255"`
 	PasswordResetExpiresAt *time.Time `json:"-"`
 	Comments               []Comment  `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"comments"`
