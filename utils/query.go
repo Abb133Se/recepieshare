@@ -101,3 +101,18 @@ func ApplyCommentSorting(query *gorm.DB, sortParam string) *gorm.DB {
 		return query.Order("comments.created_at DESC") // default sorting
 	}
 }
+
+func ApplyCatSorting(query *gorm.DB, sortParam string) *gorm.DB {
+	switch strings.ToLower(sortParam) {
+	case "title_desc":
+		return query.Order("categories.name DESC")
+	case "title_asc":
+		return query.Order("categories.name ASC")
+	case "date_asc":
+		return query.Order("categories.created_at ASC")
+	case "date_desc":
+		return query.Order("categories.created_at DESC")
+	default:
+		return query.Order("categories.created_at DESC") // default sorting
+	}
+}

@@ -134,20 +134,7 @@ func PostCategoryHandler(c *gin.Context) {
 func GetAllCategoriesHandler(c *gin.Context) {
 	var categories []model.Category
 
-	sort := c.DefaultQuery("sort", "")
-	var order string
-	switch sort {
-	case "name_desc":
-		order = "name DESC"
-	case "name_asc":
-		order = "name ASC"
-	case "created_desc":
-		order = "created_at DESC"
-	case "created_asc":
-		order = "created_at ASC"
-	default:
-		order = ""
-	}
+	sort := c.Query("sortOrder")
 
 	db, err := internal.GetGormInstance()
 	if err != nil {
@@ -156,11 +143,9 @@ func GetAllCategoriesHandler(c *gin.Context) {
 	}
 
 	query := db.Model(&model.Category{})
-	if order != "" {
-		query = query.Order(order)
-	}
 
-	// Use modular func: Validates, counts, paginates, fetches.
+	query = utils.ApplyCatSorting(query, sort)
+
 	queryCount, err := utils.Count(query, "categories")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Comment.CommnetFetchFail.String()})
@@ -177,16 +162,10 @@ func GetAllCategoriesHandler(c *gin.Context) {
 		return
 	}
 
-	// totalCount, err := utils.PaginateAndCount(c, query, &categories)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Category.CatFetchFailed.String()})
-	// 	return
-	// }
-
 	c.JSON(http.StatusOK, CategoriesResponse{
 		Message: messages.Common.Success.String(),
 		Data:    categories,
-		Count:   queryCount, // Now guaranteed.
+		Count:   queryCount,
 	})
 }
 
