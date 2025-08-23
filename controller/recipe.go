@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Abb133Se/recepieshare/internal"
@@ -580,8 +581,9 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		Text        string             `json:"text"`
 		Ingredients []model.Ingredient `json:"ingredients"`
 		Steps       []model.Step       `json:"steps"`
+		TagIDs      []uint             `json:"tag_ids"`
 		Tags        []model.Tag        `json:"tags"`
-		Categories  []uint             `json:"categories"`
+		CategoryIDs []uint             `json:"category_ids"`
 	}
 
 	var recipe model.Recipe
@@ -618,10 +620,12 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 	recipe.Text = input.Text
 
 	err = db.Transaction(func(tx *gorm.DB) error {
+		// Save recipe base fields
 		if err := tx.Save(&recipe).Error; err != nil {
 			return err
 		}
 
+		// Replace ingredients
 		for i := range input.Ingredients {
 			input.Ingredients[i].RecipeID = recipe.ID
 		}
@@ -629,6 +633,7 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			return err
 		}
 
+		// Replace steps
 		for i := range input.Steps {
 			input.Steps[i].RecipeID = recipe.ID
 		}
@@ -636,34 +641,66 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			return err
 		}
 
-		var finalTags []model.Tag
+		// Collect tags uniquely 👇
+		tagMap := make(map[uint]model.Tag)  // deduplicate by ID
+		tagNameMap := make(map[string]bool) // deduplicate by name (lowercase)
+
+		// Existing tags from IDs
+		if len(input.TagIDs) > 0 {
+			var existingTags []model.Tag
+			if err := tx.Where("id IN ?", input.TagIDs).Find(&existingTags).Error; err != nil {
+				return err
+			}
+			for _, t := range existingTags {
+				tagMap[t.ID] = t
+				tagNameMap[strings.ToLower(t.Name)] = true
+			}
+		}
+
+		// New tags from objects
 		for _, t := range input.Tags {
+			tagName := strings.ToLower(strings.TrimSpace(t.Name))
+			if tagName == "" || tagNameMap[tagName] {
+				continue // skip empty or duplicate name
+			}
+
 			var existing model.Tag
-			if err := tx.Where("name = ?", t.Name).First(&existing).Error; err != nil {
+			if err := tx.Where("LOWER(name) = ?", tagName).First(&existing).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// create new
 					if err := tx.Create(&t).Error; err != nil {
 						return err
 					}
-					finalTags = append(finalTags, t)
+					tagMap[t.ID] = t
+					tagNameMap[tagName] = true
 				} else {
 					return err
 				}
 			} else {
-				finalTags = append(finalTags, existing)
+				// already exists → just add it
+				tagMap[existing.ID] = existing
+				tagNameMap[tagName] = true
 			}
 		}
+
+		// Convert map to slice
+		finalTags := make([]model.Tag, 0, len(tagMap))
+		for _, t := range tagMap {
+			finalTags = append(finalTags, t)
+		}
+
+		// Replace tag associations
 		if err := tx.Model(&recipe).Association("Tags").Replace(finalTags); err != nil {
 			return err
 		}
 
-		// Handle Categories (only accept existing IDs)
+		// Categories
 		var categories []model.Category
-		if len(input.Categories) > 0 {
-			if err := tx.Where("id IN ?", input.Categories).Find(&categories).Error; err != nil {
+		if len(input.CategoryIDs) > 0 {
+			if err := tx.Where("id IN ?", input.CategoryIDs).Find(&categories).Error; err != nil {
 				return err
 			}
-			// Validate count
-			if len(categories) != len(input.Categories) {
+			if len(categories) != len(input.CategoryIDs) {
 				return fmt.Errorf("one or more category IDs are invalid")
 			}
 		}
