@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/Abb133Se/recepieshare/docs"
 	"github.com/Abb133Se/recepieshare/internal"
@@ -15,17 +16,17 @@ import (
 func main() {
 	r := gin.Default()
 
-	r.Use(cors.Default())
+	// r.Use(cors.Default())
 
 	// for future use the specific methods and config needed
-	// r.Use(cors.New(cors.Config{
-	//     AllowOrigins:     []string{"http://localhost:3000"}, // your frontend URL
-	//     AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-	//     AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-	//     ExposeHeaders:    []string{"Content-Length"},
-	//     AllowCredentials: true,
-	//     MaxAge: 12 * time.Hour,
-	// }))
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:4200"}, // your frontend URL
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	internal.InitLocalStorage("uploads")
 
