@@ -267,6 +267,44 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
+	var ingredientStrings []string
+	for _, ing := range recipe.Ingredients {
+		ingredientStrings = append(ingredientStrings, fmt.Sprintf("%s of %s", ing.Amount, ing.Name))
+	}
+
+	nutritionItems, err := utils.EstimateNutrition(API_KEY, ingredientStrings)
+	if err == nil && len(nutritionItems) == len(recipe.Ingredients) {
+		var totalCalories, totalProtein, totalFat, totalCarbs, totalFiber, totalSugar float64
+
+		for i, item := range nutritionItems {
+			recipe.Ingredients[i].Calories = item.Calories
+			recipe.Ingredients[i].Protein = item.ProteinG
+			recipe.Ingredients[i].Fat = item.FatTotalG
+			recipe.Ingredients[i].Carbs = item.CarbohydratesTotalG
+			recipe.Ingredients[i].Fiber = item.FiberG
+			recipe.Ingredients[i].Sugar = item.SugarG
+
+			totalCalories += item.Calories
+			totalProtein += item.ProteinG
+			totalFat += item.FatTotalG
+			totalCarbs += item.CarbohydratesTotalG
+			totalFiber += item.FiberG
+			totalSugar += item.SugarG
+		}
+
+		recipe.Calories = totalCalories
+		recipe.Protein = totalProtein
+		recipe.Fat = totalFat
+		recipe.Carbs = totalCarbs
+		recipe.Fiber = totalFiber
+		recipe.Sugar = totalSugar
+
+		db.Save(&recipe)
+		for i := range recipe.Ingredients {
+			db.Save(&recipe.Ingredients[i])
+		}
+	}
+
 	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
 
 	resp := RecipeWithImageIDs{
@@ -586,8 +624,6 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		CategoryIDs []uint             `json:"category_ids"`
 	}
 
-	var recipe model.Recipe
-
 	validID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, SimpleMessageResponse{Message: err.Error()})
@@ -605,6 +641,7 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		return
 	}
 
+	var recipe model.Recipe
 	if err = db.Preload("Ingredients").Preload("Steps").
 		Preload("Tags").Preload("Categories").
 		First(&recipe, validID).Error; err != nil {
@@ -641,11 +678,10 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			return err
 		}
 
-		// Collect tags uniquely 👇
-		tagMap := make(map[uint]model.Tag)  // deduplicate by ID
-		tagNameMap := make(map[string]bool) // deduplicate by name (lowercase)
+		// Handle tags (deduplicate and create new if necessary)
+		tagMap := make(map[uint]model.Tag)
+		tagNameMap := make(map[string]bool)
 
-		// Existing tags from IDs
 		if len(input.TagIDs) > 0 {
 			var existingTags []model.Tag
 			if err := tx.Where("id IN ?", input.TagIDs).Find(&existingTags).Error; err != nil {
@@ -657,17 +693,15 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			}
 		}
 
-		// New tags from objects
 		for _, t := range input.Tags {
 			tagName := strings.ToLower(strings.TrimSpace(t.Name))
 			if tagName == "" || tagNameMap[tagName] {
-				continue // skip empty or duplicate name
+				continue
 			}
 
 			var existing model.Tag
 			if err := tx.Where("LOWER(name) = ?", tagName).First(&existing).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					// create new
 					if err := tx.Create(&t).Error; err != nil {
 						return err
 					}
@@ -677,24 +711,21 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 					return err
 				}
 			} else {
-				// already exists → just add it
 				tagMap[existing.ID] = existing
 				tagNameMap[tagName] = true
 			}
 		}
 
-		// Convert map to slice
-		finalTags := make([]model.Tag, 0, len(tagMap))
+		var finalTags []model.Tag
 		for _, t := range tagMap {
 			finalTags = append(finalTags, t)
 		}
 
-		// Replace tag associations
 		if err := tx.Model(&recipe).Association("Tags").Replace(finalTags); err != nil {
 			return err
 		}
 
-		// Categories
+		// Handle categories
 		var categories []model.Category
 		if len(input.CategoryIDs) > 0 {
 			if err := tx.Where("id IN ?", input.CategoryIDs).Find(&categories).Error; err != nil {
@@ -706,6 +737,53 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		}
 		if err := tx.Model(&recipe).Association("Categories").Replace(categories); err != nil {
 			return err
+		}
+
+		if err := tx.Preload("Ingredients").First(&recipe, recipe.ID).Error; err != nil {
+			return err
+		}
+
+		var ingredientStrings []string
+		for _, ing := range recipe.Ingredients {
+			ingredientStrings = append(ingredientStrings, fmt.Sprintf("%s of %s", ing.Amount, ing.Name))
+		}
+
+		nutritionItems, err := utils.EstimateNutrition(API_KEY, ingredientStrings)
+		if err == nil && len(nutritionItems) == len(recipe.Ingredients) {
+			var totalCalories, totalProtein, totalFat, totalCarbs, totalFiber, totalSugar float64
+
+			for i := range recipe.Ingredients {
+				recipe.Ingredients[i].Calories = nutritionItems[i].Calories
+				recipe.Ingredients[i].Protein = nutritionItems[i].ProteinG
+				recipe.Ingredients[i].Fat = nutritionItems[i].FatTotalG
+				recipe.Ingredients[i].Carbs = nutritionItems[i].CarbohydratesTotalG
+				recipe.Ingredients[i].Fiber = nutritionItems[i].FiberG
+				recipe.Ingredients[i].Sugar = nutritionItems[i].SugarG
+
+				totalCalories += nutritionItems[i].Calories
+				totalProtein += nutritionItems[i].ProteinG
+				totalFat += nutritionItems[i].FatTotalG
+				totalCarbs += nutritionItems[i].CarbohydratesTotalG
+				totalFiber += nutritionItems[i].FiberG
+				totalSugar += nutritionItems[i].SugarG
+			}
+
+			recipe.Calories = totalCalories
+			recipe.Protein = totalProtein
+			recipe.Fat = totalFat
+			recipe.Carbs = totalCarbs
+			recipe.Fiber = totalFiber
+			recipe.Sugar = totalSugar
+
+			if err := tx.Save(&recipe).Error; err != nil {
+				return err
+			}
+
+			for i := range recipe.Ingredients {
+				if err := tx.Save(&recipe.Ingredients[i]).Error; err != nil {
+					return err
+				}
+			}
 		}
 
 		return nil
