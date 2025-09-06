@@ -552,6 +552,18 @@ func GetAllRecipesHandler(c *gin.Context) {
 		"category_ids": c.Query("category_ids"),
 		"user_id":      c.Query("user_id"),
 		"rating":       c.Query("rating"),
+		"min_calories": c.Query("min_calories"),
+		"max_calories": c.Query("max_calories"),
+		"min_protein":  c.Query("min_protein"),
+		"max_protein":  c.Query("max_protein"),
+		"min_fat":      c.Query("min_fat"),
+		"max_fat":      c.Query("max_fat"),
+		"min_carbs":    c.Query("min_carbs"),
+		"max_carbs":    c.Query("max_carbs"),
+		"min_fiber":    c.Query("min_fiber"),
+		"max_fiber":    c.Query("max_fiber"),
+		"min_sugar":    c.Query("min_sugar"),
+		"max_sugar":    c.Query("max_sugar"),
 	}
 	query := db.Model(&model.Recipe{}).Preload("Ingredients").Preload("Tags").Preload("Categories").Preload("Steps")
 	query = utils.ApplyRecipeFilters(query, params)
@@ -1177,7 +1189,7 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 // @Failure      500           {object}  controller.ErrorResponse
 // @Router       /recipes/search [get]
 func SearchRecipesHandler(c *gin.Context) {
-	// Collect query parameters for filtering
+	fmt.Println("Full query string:", c.Request.URL.RawQuery)
 	params := map[string]string{
 		"title":        c.Query("title"),
 		"ingredient":   c.Query("ingredient"),
@@ -1185,16 +1197,27 @@ func SearchRecipesHandler(c *gin.Context) {
 		"category_ids": c.Query("category_ids"),
 		"user_id":      c.Query("user_id"),
 		"rating":       c.Query("rating"),
+		"min_calories": c.Query("min_calories"),
+		"max_calories": c.Query("max_calories"),
+		"min_protein":  c.Query("min_protein"),
+		"max_protein":  c.Query("max_protein"),
+		"min_fat":      c.Query("min_fat"),
+		"max_fat":      c.Query("max_fat"),
+		"min_carbs":    c.Query("min_carbs"),
+		"max_carbs":    c.Query("max_carbs"),
+		"min_fiber":    c.Query("min_fiber"),
+		"max_fiber":    c.Query("max_fiber"),
+		"min_sugar":    c.Query("min_sugar"),
+		"max_sugar":    c.Query("max_sugar"),
 	}
+	fmt.Println(c.Query("max_calories"))
 
-	// Initialize DB
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
-	// Build query with filters and sorting
 	query := db.Model(&model.Recipe{}).
 		Preload("Tags").
 		Preload("Categories").
@@ -1204,7 +1227,6 @@ func SearchRecipesHandler(c *gin.Context) {
 	query = utils.ApplyRecipeFilters(query, params)
 	query = utils.ApplyRecipeSorting(query, c.Query("sortOrder"))
 
-	// Use PaginateAndCount for pagination and counting
 	var recipes []model.Recipe
 	totalCount, err := utils.Count(query, "recipes")
 	if err != nil {
@@ -1220,7 +1242,6 @@ func SearchRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	// Post-process to add image IDs
 	var recipesWithImages []RecipeWithImageIDs
 	for _, r := range recipes {
 		imageIDs, _ := service.GetImageIDsForEntity("recipe", r.ID)
@@ -1241,6 +1262,6 @@ func SearchRecipesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
 		Message: messages.Common.Success.String(),
 		Data:    recipesWithImages,
-		Count:   totalCount, // Added to include total count
+		Count:   totalCount,
 	})
 }
