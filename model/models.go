@@ -15,6 +15,12 @@ type Recipe struct {
 	Tags        []Tag        `gorm:"many2many:recipe_tags;constraint:OnDelete:CASCADE" json:"tags"`
 	Categories  []Category   `gorm:"many2many:recipe_categories;constraint:OnDelete:CASCADE" json:"categories"`
 	Steps       []Step       `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE" json:"steps"`
+	Calories    float64      `json:"calories"`
+	Protein     float64      `json:"protein"`
+	Fat         float64      `json:"fat"`
+	Carbs       float64      `json:"carbs"`
+	Fiber       float64      `json:"fiber"`
+	Sugar       float64      `json:"sugar"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time    `gorm:"autoUpdateTime"`
 }
@@ -24,6 +30,12 @@ type Ingredient struct {
 	Name      string    `json:"name" binding:"required"`
 	Amount    string    `json:"amount" binding:"required"`
 	RecipeID  uint      `json:"recipe_id" gorm:"index"`
+	Calories  float64   `json:"calories"`
+	Protein   float64   `json:"protein"`
+	Fat       float64   `json:"fat"`
+	Carbs     float64   `json:"carbs"`
+	Fiber     float64   `json:"fiber"`
+	Sugar     float64   `json:"sugar"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }

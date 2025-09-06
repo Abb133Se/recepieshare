@@ -267,6 +267,44 @@ func PostRecipeHandler(c *gin.Context) {
 		return
 	}
 
+	var ingredientStrings []string
+	for _, ing := range recipe.Ingredients {
+		ingredientStrings = append(ingredientStrings, fmt.Sprintf("%s of %s", ing.Amount, ing.Name))
+	}
+
+	nutritionItems, err := utils.EstimateNutrition(API_KEY, ingredientStrings)
+	if err == nil && len(nutritionItems) == len(recipe.Ingredients) {
+		var totalCalories, totalProtein, totalFat, totalCarbs, totalFiber, totalSugar float64
+
+		for i, item := range nutritionItems {
+			recipe.Ingredients[i].Calories = item.Calories
+			recipe.Ingredients[i].Protein = item.ProteinG
+			recipe.Ingredients[i].Fat = item.FatTotalG
+			recipe.Ingredients[i].Carbs = item.CarbohydratesTotalG
+			recipe.Ingredients[i].Fiber = item.FiberG
+			recipe.Ingredients[i].Sugar = item.SugarG
+
+			totalCalories += item.Calories
+			totalProtein += item.ProteinG
+			totalFat += item.FatTotalG
+			totalCarbs += item.CarbohydratesTotalG
+			totalFiber += item.FiberG
+			totalSugar += item.SugarG
+		}
+
+		recipe.Calories = totalCalories
+		recipe.Protein = totalProtein
+		recipe.Fat = totalFat
+		recipe.Carbs = totalCarbs
+		recipe.Fiber = totalFiber
+		recipe.Sugar = totalSugar
+
+		db.Save(&recipe)
+		for i := range recipe.Ingredients {
+			db.Save(&recipe.Ingredients[i])
+		}
+	}
+
 	imageIDs, _ := service.GetImageIDsForEntity("recipe", recipe.ID)
 
 	resp := RecipeWithImageIDs{
@@ -514,6 +552,18 @@ func GetAllRecipesHandler(c *gin.Context) {
 		"category_ids": c.Query("category_ids"),
 		"user_id":      c.Query("user_id"),
 		"rating":       c.Query("rating"),
+		"min_calories": c.Query("min_calories"),
+		"max_calories": c.Query("max_calories"),
+		"min_protein":  c.Query("min_protein"),
+		"max_protein":  c.Query("max_protein"),
+		"min_fat":      c.Query("min_fat"),
+		"max_fat":      c.Query("max_fat"),
+		"min_carbs":    c.Query("min_carbs"),
+		"max_carbs":    c.Query("max_carbs"),
+		"min_fiber":    c.Query("min_fiber"),
+		"max_fiber":    c.Query("max_fiber"),
+		"min_sugar":    c.Query("min_sugar"),
+		"max_sugar":    c.Query("max_sugar"),
 	}
 	query := db.Model(&model.Recipe{}).Preload("Ingredients").Preload("Tags").Preload("Categories").Preload("Steps")
 	query = utils.ApplyRecipeFilters(query, params)
@@ -586,8 +636,6 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		CategoryIDs []uint             `json:"category_ids"`
 	}
 
-	var recipe model.Recipe
-
 	validID, err := utils.ValidateEntityID(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, SimpleMessageResponse{Message: err.Error()})
@@ -605,6 +653,7 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		return
 	}
 
+	var recipe model.Recipe
 	if err = db.Preload("Ingredients").Preload("Steps").
 		Preload("Tags").Preload("Categories").
 		First(&recipe, validID).Error; err != nil {
@@ -641,11 +690,10 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			return err
 		}
 
-		// Collect tags uniquely 👇
-		tagMap := make(map[uint]model.Tag)  // deduplicate by ID
-		tagNameMap := make(map[string]bool) // deduplicate by name (lowercase)
+		// Handle tags (deduplicate and create new if necessary)
+		tagMap := make(map[uint]model.Tag)
+		tagNameMap := make(map[string]bool)
 
-		// Existing tags from IDs
 		if len(input.TagIDs) > 0 {
 			var existingTags []model.Tag
 			if err := tx.Where("id IN ?", input.TagIDs).Find(&existingTags).Error; err != nil {
@@ -657,17 +705,15 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 			}
 		}
 
-		// New tags from objects
 		for _, t := range input.Tags {
 			tagName := strings.ToLower(strings.TrimSpace(t.Name))
 			if tagName == "" || tagNameMap[tagName] {
-				continue // skip empty or duplicate name
+				continue
 			}
 
 			var existing model.Tag
 			if err := tx.Where("LOWER(name) = ?", tagName).First(&existing).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					// create new
 					if err := tx.Create(&t).Error; err != nil {
 						return err
 					}
@@ -677,24 +723,21 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 					return err
 				}
 			} else {
-				// already exists → just add it
 				tagMap[existing.ID] = existing
 				tagNameMap[tagName] = true
 			}
 		}
 
-		// Convert map to slice
-		finalTags := make([]model.Tag, 0, len(tagMap))
+		var finalTags []model.Tag
 		for _, t := range tagMap {
 			finalTags = append(finalTags, t)
 		}
 
-		// Replace tag associations
 		if err := tx.Model(&recipe).Association("Tags").Replace(finalTags); err != nil {
 			return err
 		}
 
-		// Categories
+		// Handle categories
 		var categories []model.Category
 		if len(input.CategoryIDs) > 0 {
 			if err := tx.Where("id IN ?", input.CategoryIDs).Find(&categories).Error; err != nil {
@@ -706,6 +749,53 @@ func PutRecipeUpdateHandler(c *gin.Context) {
 		}
 		if err := tx.Model(&recipe).Association("Categories").Replace(categories); err != nil {
 			return err
+		}
+
+		if err := tx.Preload("Ingredients").First(&recipe, recipe.ID).Error; err != nil {
+			return err
+		}
+
+		var ingredientStrings []string
+		for _, ing := range recipe.Ingredients {
+			ingredientStrings = append(ingredientStrings, fmt.Sprintf("%s of %s", ing.Amount, ing.Name))
+		}
+
+		nutritionItems, err := utils.EstimateNutrition(API_KEY, ingredientStrings)
+		if err == nil && len(nutritionItems) == len(recipe.Ingredients) {
+			var totalCalories, totalProtein, totalFat, totalCarbs, totalFiber, totalSugar float64
+
+			for i := range recipe.Ingredients {
+				recipe.Ingredients[i].Calories = nutritionItems[i].Calories
+				recipe.Ingredients[i].Protein = nutritionItems[i].ProteinG
+				recipe.Ingredients[i].Fat = nutritionItems[i].FatTotalG
+				recipe.Ingredients[i].Carbs = nutritionItems[i].CarbohydratesTotalG
+				recipe.Ingredients[i].Fiber = nutritionItems[i].FiberG
+				recipe.Ingredients[i].Sugar = nutritionItems[i].SugarG
+
+				totalCalories += nutritionItems[i].Calories
+				totalProtein += nutritionItems[i].ProteinG
+				totalFat += nutritionItems[i].FatTotalG
+				totalCarbs += nutritionItems[i].CarbohydratesTotalG
+				totalFiber += nutritionItems[i].FiberG
+				totalSugar += nutritionItems[i].SugarG
+			}
+
+			recipe.Calories = totalCalories
+			recipe.Protein = totalProtein
+			recipe.Fat = totalFat
+			recipe.Carbs = totalCarbs
+			recipe.Fiber = totalFiber
+			recipe.Sugar = totalSugar
+
+			if err := tx.Save(&recipe).Error; err != nil {
+				return err
+			}
+
+			for i := range recipe.Ingredients {
+				if err := tx.Save(&recipe.Ingredients[i]).Error; err != nil {
+					return err
+				}
+			}
 		}
 
 		return nil
@@ -1099,7 +1189,7 @@ func DeleteRecipeCategoriesHandler(c *gin.Context) {
 // @Failure      500           {object}  controller.ErrorResponse
 // @Router       /recipes/search [get]
 func SearchRecipesHandler(c *gin.Context) {
-	// Collect query parameters for filtering
+	fmt.Println("Full query string:", c.Request.URL.RawQuery)
 	params := map[string]string{
 		"title":        c.Query("title"),
 		"ingredient":   c.Query("ingredient"),
@@ -1107,16 +1197,27 @@ func SearchRecipesHandler(c *gin.Context) {
 		"category_ids": c.Query("category_ids"),
 		"user_id":      c.Query("user_id"),
 		"rating":       c.Query("rating"),
+		"min_calories": c.Query("min_calories"),
+		"max_calories": c.Query("max_calories"),
+		"min_protein":  c.Query("min_protein"),
+		"max_protein":  c.Query("max_protein"),
+		"min_fat":      c.Query("min_fat"),
+		"max_fat":      c.Query("max_fat"),
+		"min_carbs":    c.Query("min_carbs"),
+		"max_carbs":    c.Query("max_carbs"),
+		"min_fiber":    c.Query("min_fiber"),
+		"max_fiber":    c.Query("max_fiber"),
+		"min_sugar":    c.Query("min_sugar"),
+		"max_sugar":    c.Query("max_sugar"),
 	}
+	fmt.Println(c.Query("max_calories"))
 
-	// Initialize DB
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
 
-	// Build query with filters and sorting
 	query := db.Model(&model.Recipe{}).
 		Preload("Tags").
 		Preload("Categories").
@@ -1126,7 +1227,6 @@ func SearchRecipesHandler(c *gin.Context) {
 	query = utils.ApplyRecipeFilters(query, params)
 	query = utils.ApplyRecipeSorting(query, c.Query("sortOrder"))
 
-	// Use PaginateAndCount for pagination and counting
 	var recipes []model.Recipe
 	totalCount, err := utils.Count(query, "recipes")
 	if err != nil {
@@ -1142,7 +1242,6 @@ func SearchRecipesHandler(c *gin.Context) {
 		return
 	}
 
-	// Post-process to add image IDs
 	var recipesWithImages []RecipeWithImageIDs
 	for _, r := range recipes {
 		imageIDs, _ := service.GetImageIDsForEntity("recipe", r.ID)
@@ -1163,6 +1262,6 @@ func SearchRecipesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, RecipeListWithImagesResponse{
 		Message: messages.Common.Success.String(),
 		Data:    recipesWithImages,
-		Count:   totalCount, // Added to include total count
+		Count:   totalCount,
 	})
 }
