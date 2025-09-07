@@ -103,6 +103,12 @@ type RecipeWithImageIDs struct {
 	Images        []uint             `json:"images"`
 	FavoriteCount int64              `json:"favorite_count"`
 	IsFavorited   bool               `json:"is_favorited"`
+	Calories      float64            `json:"calories"`
+	Protein       float64            `json:"protein"`
+	Fat           float64            `json:"fat"`
+	Carbs         float64            `json:"carbs"`
+	Fiber         float64            `json:"fiber"`
+	Sugar         float64            `json:"sugar"`
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
 }
@@ -188,6 +194,12 @@ func GetRecipeHandler(c *gin.Context) {
 		Steps:         recipe.Steps,
 		Images:        imageIDs,
 		FavoriteCount: result.Count,
+		Calories:      recipe.Calories,
+		Protein:       recipe.Protein,
+		Fat:           recipe.Fat,
+		Carbs:         recipe.Carbs,
+		Fiber:         recipe.Fiber,
+		Sugar:         recipe.Sugar,
 		IsFavorited:   result.UserFavored,
 		CreatedAt:     recipe.CreatedAt,
 		UpdatedAt:     recipe.UpdatedAt,
