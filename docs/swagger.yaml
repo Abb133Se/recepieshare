@@ -758,6 +758,56 @@ definitions:
 info:
   contact: {}
 paths:
+  /admin/analytics:
+    get:
+      description: Returns aggregated counts of metrics (views, favorites, ratings,
+        site visits, recipes created) grouped by day or month depending on the requested
+        period.
+      parameters:
+      - description: Metric to analyze
+        enum:
+        - views
+        - favorites
+        - ratings
+        - site
+        - recipes
+        in: query
+        name: metric
+        required: true
+        type: string
+      - description: Time period
+        enum:
+        - week
+        - month
+        - year
+        in: query
+        name: period
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controller.TimeSeriesData'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get analytics time-series data
+      tags:
+      - analytics
   /admin/user/{userID}/comment/{id}:
     delete:
       description: Admin deletes a comment of any user
@@ -930,56 +980,6 @@ paths:
       summary: Delete a favorite (admin)
       tags:
       - favorites
-  /analytics:
-    get:
-      description: Returns aggregated counts of metrics (views, favorites, ratings,
-        site visits, recipes created) grouped by day or month depending on the requested
-        period.
-      parameters:
-      - description: Metric to analyze
-        enum:
-        - views
-        - favorites
-        - ratings
-        - site
-        - recipes
-        in: query
-        name: metric
-        required: true
-        type: string
-      - description: Time period
-        enum:
-        - week
-        - month
-        - year
-        in: query
-        name: period
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/controller.TimeSeriesData'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get analytics time-series data
-      tags:
-      - analytics
   /categories:
     get:
       description: Retrieve a paginated list of categories with total count, optionally
