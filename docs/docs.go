@@ -15,6 +15,75 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/analytics": {
+            "get": {
+                "description": "Returns aggregated counts of metrics (views, favorites, ratings, site visits, recipes created) grouped by day or month depending on the requested period.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Get analytics time-series data",
+                "parameters": [
+                    {
+                        "enum": [
+                            "views",
+                            "favorites",
+                            "ratings",
+                            "site",
+                            "recipes"
+                        ],
+                        "type": "string",
+                        "description": "Metric to analyze",
+                        "name": "metric",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "week",
+                            "month",
+                            "year"
+                        ],
+                        "type": "string",
+                        "description": "Time period",
+                        "name": "period",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controller.TimeSeriesData"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/user/{userID}/comment/{id}": {
             "delete": {
                 "security": [
@@ -276,75 +345,6 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/controller.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/analytics": {
-            "get": {
-                "description": "Returns aggregated counts of metrics (views, favorites, ratings, site visits, recipes created) grouped by day or month depending on the requested period.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "analytics"
-                ],
-                "summary": "Get analytics time-series data",
-                "parameters": [
-                    {
-                        "enum": [
-                            "views",
-                            "favorites",
-                            "ratings",
-                            "site",
-                            "recipes"
-                        ],
-                        "type": "string",
-                        "description": "Metric to analyze",
-                        "name": "metric",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "enum": [
-                            "week",
-                            "month",
-                            "year"
-                        ],
-                        "type": "string",
-                        "description": "Time period",
-                        "name": "period",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controller.TimeSeriesData"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
                         }
                     }
                 }

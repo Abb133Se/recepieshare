@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Abb133Se/recepieshare/internal"
@@ -59,6 +60,18 @@ type TimeSeriesData struct {
 type AnalyticsRequest struct {
 	Metric string `form:"metric" binding:"required"` // views|favorites|ratings|site
 	Period string `form:"period" binding:"required"` // week|month|year
+}
+
+type ChartJSResponse struct {
+	Labels   []string         `json:"labels"`
+	Datasets []ChartJSDataset `json:"datasets"`
+}
+
+type ChartJSDataset struct {
+	Label           string  `json:"label"`
+	Data            []int64 `json:"data"`
+	BorderColor     string  `json:"borderColor"`
+	BackgroundColor string  `json:"backgroundColor"`
 }
 
 // Signup godoc
@@ -304,7 +317,7 @@ func ResetPasswordHandler(c *gin.Context) {
 // @Success      200 {array} TimeSeriesData
 // @Failure      400 {object} map[string]string
 // @Failure      500 {object} map[string]string
-// @Router       /analytics [get]
+// @Router       /admin/analytics [get]
 func GetAnalytics(c *gin.Context) {
 	var req AnalyticsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -322,21 +335,21 @@ func GetAnalytics(c *gin.Context) {
 	switch req.Period {
 	case "week":
 		query = fmt.Sprintf(`
-            SELECT DATE(%s) as label, COUNT(*) as count
-            FROM %s
-            WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-            GROUP BY DATE(%s)
-            ORDER BY DATE(%s);
-        `, column, table, column, column, column)
+			SELECT DATE_FORMAT(%s, '%%Y-%%m-%%d') as label, COUNT(*) as count
+			FROM %s
+			WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+			GROUP BY DATE_FORMAT(%s, '%%Y-%%m-%%d')
+			ORDER BY DATE_FORMAT(%s, '%%Y-%%m-%%d');
+		`, column, table, column, column, column)
 
 	case "month":
 		query = fmt.Sprintf(`
-            SELECT DATE(%s) as label, COUNT(*) as count
-            FROM %s
-            WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-            GROUP BY DATE(%s)
-            ORDER BY DATE(%s);
-        `, column, table, column, column, column)
+			SELECT DATE_FORMAT(%s, '%%Y-%%m-%%d') as label, COUNT(*) as count
+			FROM %s
+			WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+			GROUP BY DATE_FORMAT(%s, '%%Y-%%m-%%d')
+			ORDER BY DATE_FORMAT(%s, '%%Y-%%m-%%d');
+		`, column, table, column, column, column)
 
 	case "year":
 		query = fmt.Sprintf(`
@@ -352,17 +365,37 @@ func GetAnalytics(c *gin.Context) {
 		return
 	}
 
+	// Fetch DB results
+	var results []TimeSeriesData
 	db, err := internal.GetGormInstance()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
 		return
 	}
-
-	var results []TimeSeriesData
 	if err := db.Raw(query).Scan(&results).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, results)
+	// Transform into Chart.js format
+	labels := make([]string, 0, len(results))
+	data := make([]int64, 0, len(results))
+	for _, r := range results {
+		labels = append(labels, r.Label)
+		data = append(data, r.Count)
+	}
+
+	chart := ChartJSResponse{
+		Labels: labels,
+		Datasets: []ChartJSDataset{
+			{
+				Label:           strings.Title(req.Metric),
+				Data:            data,
+				BorderColor:     "rgba(75,192,192,1)",
+				BackgroundColor: "rgba(75,192,192,0.2)",
+			},
+		},
+	}
+
+	c.JSON(http.StatusOK, chart)
 }
