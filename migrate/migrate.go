@@ -21,5 +21,7 @@ func AutoMigration(db *gorm.DB) error {
 		&model.Category{},
 		&model.Step{},
 		&model.Image{},
+		&model.RecipeView{},
+		&model.SiteVisit{},
 	)
 }

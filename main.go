@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/Abb133Se/recepieshare/docs"
 	"github.com/Abb133Se/recepieshare/internal"
+	"github.com/Abb133Se/recepieshare/middleware"
 	"github.com/Abb133Se/recepieshare/migrate"
 	"github.com/Abb133Se/recepieshare/routes"
 	"github.com/gin-contrib/cors"
@@ -16,7 +17,7 @@ import (
 func main() {
 	r := gin.Default()
 
-	// r.Use(cors.Default())
+	r.Use(middleware.SiteVisitMiddleware())
 
 	// for future use the specific methods and config needed
 	r.Use(cors.New(cors.Config{
