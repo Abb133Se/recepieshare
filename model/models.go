@@ -120,3 +120,18 @@ type Image struct {
 	Size       int64     `json:"size"`
 	CreatedAt  time.Time `json:"created_at"`
 }
+
+type RecipeView struct {
+	ID        uint      `gorm:"primaryKey"`
+	RecipeID  *uint     `gorm:"index" json:"recipe_id,omitempty"`
+	UserID    *uint     `gorm:"index" json:"user_id,omitempty"`
+	IPAddress string    `json:"ip_address"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+}
+
+type SiteVisit struct {
+	ID        uint      `gorm:"primaryKey"`
+	UserID    *uint     `gorm:"index" json:"user_id,omitempty"`
+	IPAddress string    `json:"ip_address"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+}

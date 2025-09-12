@@ -281,6 +281,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/analytics": {
+            "get": {
+                "description": "Returns aggregated counts of metrics (views, favorites, ratings, site visits, recipes created) grouped by day or month depending on the requested period.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Get analytics time-series data",
+                "parameters": [
+                    {
+                        "enum": [
+                            "views",
+                            "favorites",
+                            "ratings",
+                            "site",
+                            "recipes"
+                        ],
+                        "type": "string",
+                        "description": "Metric to analyze",
+                        "name": "metric",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "week",
+                            "month",
+                            "year"
+                        ],
+                        "type": "string",
+                        "description": "Time period",
+                        "name": "period",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controller.TimeSeriesData"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/categories": {
             "get": {
                 "description": "Retrieve a paginated list of categories with total count, optionally sorted by name or creation date",
@@ -3359,6 +3428,12 @@ const docTemplate = `{
         "controller.RecipeWithImageIDs": {
             "type": "object",
             "properties": {
+                "calories": {
+                    "type": "number"
+                },
+                "carbs": {
+                    "type": "number"
+                },
                 "categories": {
                     "type": "array",
                     "items": {
@@ -3368,8 +3443,14 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "fat": {
+                    "type": "number"
+                },
                 "favorite_count": {
                     "type": "integer"
+                },
+                "fiber": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "integer"
@@ -3389,11 +3470,17 @@ const docTemplate = `{
                 "is_favorited": {
                     "type": "boolean"
                 },
+                "protein": {
+                    "type": "number"
+                },
                 "steps": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.Step"
                     }
+                },
+                "sugar": {
+                    "type": "number"
                 },
                 "tags": {
                     "type": "array",
@@ -3487,6 +3574,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.Tag"
                     }
+                }
+            }
+        },
+        "controller.TimeSeriesData": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
                 }
             }
         },
@@ -3817,8 +3915,20 @@ const docTemplate = `{
                 "amount": {
                     "type": "string"
                 },
+                "calories": {
+                    "type": "number"
+                },
+                "carbs": {
+                    "type": "number"
+                },
                 "createdAt": {
                     "type": "string"
+                },
+                "fat": {
+                    "type": "number"
+                },
+                "fiber": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "integer"
@@ -3826,8 +3936,14 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "protein": {
+                    "type": "number"
+                },
                 "recipe_id": {
                     "type": "integer"
+                },
+                "sugar": {
+                    "type": "number"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -3868,6 +3984,12 @@ const docTemplate = `{
                 "user_id"
             ],
             "properties": {
+                "calories": {
+                    "type": "number"
+                },
+                "carbs": {
+                    "type": "number"
+                },
                 "categories": {
                     "type": "array",
                     "items": {
@@ -3883,11 +4005,17 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "fat": {
+                    "type": "number"
+                },
                 "favorites": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.Favorite"
                     }
+                },
+                "fiber": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "integer"
@@ -3897,6 +4025,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.Ingredient"
                     }
+                },
+                "protein": {
+                    "type": "number"
                 },
                 "ratings": {
                     "type": "array",
@@ -3909,6 +4040,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.Step"
                     }
+                },
+                "sugar": {
+                    "type": "number"
                 },
                 "tags": {
                     "type": "array",

@@ -13,7 +13,7 @@ func AddRoutes(r *gin.Engine) {
 	public.Use(middleware.SetLanguage())
 	{
 		// Recipe read endpoints
-		public.GET("/recipe/:id", middleware.ExtractUserFromToken(), controller.GetRecipeHandler)
+
 		public.GET("/recipe/list", controller.GetAllRecipesHandler)
 		public.GET("/recipe/:id/ingredients", controller.GetAllRecipeIngredientHandler)
 		public.GET("/recipe/:id/comments", controller.GetAllRecipeCommentsHandler)
@@ -49,6 +49,7 @@ func AddRoutes(r *gin.Engine) {
 	protected.Use(middleware.SetLanguage())
 	{
 		// Recipe management
+		protected.GET("/recipe/:id", middleware.ExtractUserFromToken(), controller.GetRecipeHandler)
 		protected.POST("/recipe", controller.PostRecipeHandler)
 		protected.PUT("/recipe/:id", controller.PutRecipeUpdateHandler)
 		protected.DELETE("/recipe/:id", controller.DeleteRecipeHandler)
@@ -151,5 +152,7 @@ func AddRoutes(r *gin.Engine) {
 		// Favorites routes
 		admin.GET("/favorites", controller.GetAllFavorites)
 		admin.DELETE("/user/:userID/unfavorite/:id", controller.DeleteFavoriteHandler)
+
+		admin.GET("/analytics", controller.GetAnalytics)
 	}
 }

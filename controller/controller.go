@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -48,6 +49,16 @@ type ResetPasswordRequest struct {
 
 type ResetPasswordResponse struct {
 	Message string `json:"message"`
+}
+
+type TimeSeriesData struct {
+	Label string `json:"label"`
+	Count int64  `json:"count"`
+}
+
+type AnalyticsRequest struct {
+	Metric string `form:"metric" binding:"required"` // views|favorites|ratings|site
+	Period string `form:"period" binding:"required"` // week|month|year
 }
 
 // Signup godoc
@@ -281,4 +292,77 @@ func ResetPasswordHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, ResetPasswordResponse{Message: messages.User.PasswordResetSuccess.String()})
+}
+
+// GetAnalytics godoc
+// @Summary      Get analytics time-series data
+// @Description  Returns aggregated counts of metrics (views, favorites, ratings, site visits, recipes created) grouped by day or month depending on the requested period.
+// @Tags         analytics
+// @Produce      json
+// @Param        metric query string true "Metric to analyze" Enums(views, favorites, ratings, site, recipes)
+// @Param        period query string true "Time period" Enums(week, month, year)
+// @Success      200 {array} TimeSeriesData
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /analytics [get]
+func GetAnalytics(c *gin.Context) {
+	var req AnalyticsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	table, column, err := utils.GetTableAndColumn(req.Metric)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric"})
+		return
+	}
+
+	var query string
+	switch req.Period {
+	case "week":
+		query = fmt.Sprintf(`
+            SELECT DATE(%s) as label, COUNT(*) as count
+            FROM %s
+            WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(%s)
+            ORDER BY DATE(%s);
+        `, column, table, column, column, column)
+
+	case "month":
+		query = fmt.Sprintf(`
+            SELECT DATE(%s) as label, COUNT(*) as count
+            FROM %s
+            WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(%s)
+            ORDER BY DATE(%s);
+        `, column, table, column, column, column)
+
+	case "year":
+		query = fmt.Sprintf(`
+            SELECT DATE_FORMAT(%s, '%%Y-%%m') as label, COUNT(*) as count
+            FROM %s
+            WHERE %s >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+            GROUP BY DATE_FORMAT(%s, '%%Y-%%m')
+            ORDER BY DATE_FORMAT(%s, '%%Y-%%m');
+        `, column, table, column, column, column)
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid period"})
+		return
+	}
+
+	db, err := internal.GetGormInstance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Common.DBConnectionErr.String()})
+		return
+	}
+
+	var results []TimeSeriesData
+	if err := db.Raw(query).Scan(&results).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
 }

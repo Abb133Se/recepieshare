@@ -262,14 +262,22 @@ definitions:
     type: object
   controller.RecipeWithImageIDs:
     properties:
+      calories:
+        type: number
+      carbs:
+        type: number
       categories:
         items:
           $ref: '#/definitions/model.Category'
         type: array
       created_at:
         type: string
+      fat:
+        type: number
       favorite_count:
         type: integer
+      fiber:
+        type: number
       id:
         type: integer
       images:
@@ -282,10 +290,14 @@ definitions:
         type: array
       is_favorited:
         type: boolean
+      protein:
+        type: number
       steps:
         items:
           $ref: '#/definitions/model.Step'
         type: array
+      sugar:
+        type: number
       tags:
         items:
           $ref: '#/definitions/model.Tag'
@@ -346,6 +358,13 @@ definitions:
         items:
           $ref: '#/definitions/model.Tag'
         type: array
+    type: object
+  controller.TimeSeriesData:
+    properties:
+      count:
+        type: integer
+      label:
+        type: string
     type: object
   controller.TopRatedRecipe:
     properties:
@@ -566,14 +585,26 @@ definitions:
     properties:
       amount:
         type: string
+      calories:
+        type: number
+      carbs:
+        type: number
       createdAt:
         type: string
+      fat:
+        type: number
+      fiber:
+        type: number
       id:
         type: integer
       name:
         type: string
+      protein:
+        type: number
       recipe_id:
         type: integer
+      sugar:
+        type: number
       updatedAt:
         type: string
     required:
@@ -599,6 +630,10 @@ definitions:
     type: object
   model.Recipe:
     properties:
+      calories:
+        type: number
+      carbs:
+        type: number
       categories:
         items:
           $ref: '#/definitions/model.Category'
@@ -609,16 +644,22 @@ definitions:
         type: array
       createdAt:
         type: string
+      fat:
+        type: number
       favorites:
         items:
           $ref: '#/definitions/model.Favorite'
         type: array
+      fiber:
+        type: number
       id:
         type: integer
       ingredients:
         items:
           $ref: '#/definitions/model.Ingredient'
         type: array
+      protein:
+        type: number
       ratings:
         items:
           $ref: '#/definitions/model.Rating'
@@ -627,6 +668,8 @@ definitions:
         items:
           $ref: '#/definitions/model.Step'
         type: array
+      sugar:
+        type: number
       tags:
         items:
           $ref: '#/definitions/model.Tag'
@@ -887,6 +930,56 @@ paths:
       summary: Delete a favorite (admin)
       tags:
       - favorites
+  /analytics:
+    get:
+      description: Returns aggregated counts of metrics (views, favorites, ratings,
+        site visits, recipes created) grouped by day or month depending on the requested
+        period.
+      parameters:
+      - description: Metric to analyze
+        enum:
+        - views
+        - favorites
+        - ratings
+        - site
+        - recipes
+        in: query
+        name: metric
+        required: true
+        type: string
+      - description: Time period
+        enum:
+        - week
+        - month
+        - year
+        in: query
+        name: period
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controller.TimeSeriesData'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get analytics time-series data
+      tags:
+      - analytics
   /categories:
     get:
       description: Retrieve a paginated list of categories with total count, optionally

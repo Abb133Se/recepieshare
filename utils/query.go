@@ -203,3 +203,20 @@ func ApplyCatSorting(query *gorm.DB, sortParam string) *gorm.DB {
 		return query.Order("categories.created_at DESC") // default sorting
 	}
 }
+
+func GetTableAndColumn(metric string) (string, string, error) {
+	switch metric {
+	case "views":
+		return "recipe_views", "created_at", nil
+	case "favorites":
+		return "favorites", "created_at", nil
+	case "ratings":
+		return "ratings", "created_at", nil
+	case "site":
+		return "site_visits", "created_at", nil
+	case "recipes":
+		return "recipes", "created_at", nil
+	default:
+		return "", "", fmt.Errorf("invalid metric")
+	}
+}

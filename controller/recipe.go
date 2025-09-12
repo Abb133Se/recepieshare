@@ -205,6 +205,18 @@ func GetRecipeHandler(c *gin.Context) {
 		UpdatedAt:     recipe.UpdatedAt,
 	}
 
+	view := model.RecipeView{
+		RecipeID:  &recipe.ID,
+		IPAddress: c.ClientIP(),
+	}
+	if userID := c.GetUint("userID"); userID != 0 {
+		view.UserID = &userID
+	}
+	if err := db.Create(&view).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: messages.Recipe.RecipeCreateFailed.String()})
+		return
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 
